@@ -41,6 +41,16 @@
     <button class="primary" id="continue-btn">Continuar</button>
   </div>
 
+  <div id="lightbox" class="lightbox" style="display:none;">
+    <button class="lightbox-close" id="lightbox-close" aria-label="Cerrar">✕</button>
+    <button class="lightbox-nav lightbox-prev" id="lightbox-prev" aria-label="Anterior">‹</button>
+    <button class="lightbox-nav lightbox-next" id="lightbox-next" aria-label="Siguiente">›</button>
+    <div class="lightbox-content">
+      <img id="lightbox-img" src="" alt="" />
+      <button class="lightbox-select" id="lightbox-select">Seleccionar</button>
+    </div>
+  </div>
+
   <script src="assets/js/api.js"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
@@ -107,24 +117,86 @@
 
     const galleryGrid = document.getElementById('gallery-grid');
     const emptyState = document.getElementById('empty-state');
+    let currentPhotos = [];
+    let currentLightboxIndex = -1;
 
     async function loadPhotos() {
       const { photos } = await apiRequest(`/api/galleries/${slug}/photos`, { extraHeaders: galleryHeaders() });
+      currentPhotos = photos;
       emptyState.style.display = photos.length ? 'none' : 'block';
       galleryGrid.innerHTML = '';
-      photos.forEach((photo) => {
+      photos.forEach((photo, index) => {
         const card = document.createElement('div');
         card.className = `client-photo-card${selectedIds.has(photo.id) ? ' selected' : ''}`;
         card.dataset.id = photo.id;
         card.innerHTML = `
           <img src="${photo.thumbnailUrl}" alt="${photo.file_name}" loading="lazy" />
-          <div class="select-indicator">✓</div>
+          <button class="select-indicator" title="Seleccionar">✓</button>
         `;
-        card.addEventListener('click', () => toggleSelect(photo.id, card));
+        card.querySelector('img').addEventListener('click', () => openLightbox(index));
+        card.querySelector('.select-indicator').addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleSelect(photo.id, card);
+        });
         galleryGrid.appendChild(card);
       });
       updateSelectionBar();
     }
+
+    // --- Lightbox ---
+    const lightboxEl = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightbox-img');
+    const lightboxSelectBtn = document.getElementById('lightbox-select');
+
+    function openLightbox(index) {
+      currentLightboxIndex = index;
+      renderLightbox();
+      lightboxEl.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      lightboxEl.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    function renderLightbox() {
+      const photo = currentPhotos[currentLightboxIndex];
+      if (!photo) return;
+      lightboxImg.src = photo.url;
+      lightboxImg.alt = photo.file_name;
+      const isSelected = selectedIds.has(photo.id);
+      lightboxSelectBtn.textContent = isSelected ? '✓ Seleccionada' : 'Seleccionar';
+      lightboxSelectBtn.classList.toggle('selected', isSelected);
+    }
+
+    function lightboxStep(delta) {
+      if (!currentPhotos.length) return;
+      currentLightboxIndex = (currentLightboxIndex + delta + currentPhotos.length) % currentPhotos.length;
+      renderLightbox();
+    }
+
+    document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
+    document.getElementById('lightbox-prev').addEventListener('click', () => lightboxStep(-1));
+    document.getElementById('lightbox-next').addEventListener('click', () => lightboxStep(1));
+    lightboxEl.addEventListener('click', (e) => {
+      if (e.target === lightboxEl) closeLightbox();
+    });
+
+    lightboxSelectBtn.addEventListener('click', async () => {
+      const photo = currentPhotos[currentLightboxIndex];
+      if (!photo) return;
+      const card = galleryGrid.querySelector(`[data-id="${photo.id}"]`);
+      await toggleSelect(photo.id, card);
+      renderLightbox();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (lightboxEl.style.display === 'none') return;
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowLeft') lightboxStep(-1);
+      if (e.key === 'ArrowRight') lightboxStep(1);
+    });
 
     async function loadSelections() {
       try {
@@ -148,10 +220,10 @@
         });
         if (nowSelected) {
           selectedIds.add(photoId);
-          card.classList.add('selected');
+          card?.classList.add('selected');
         } else {
           selectedIds.delete(photoId);
-          card.classList.remove('selected');
+          card?.classList.remove('selected');
         }
         updateSelectionBar();
       } catch (err) {

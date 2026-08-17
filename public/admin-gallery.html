@@ -45,11 +45,17 @@
 
     <div class="upload-box">
       <form id="upload-form">
-        <input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp" required />
-        <div>
-          <button type="submit" class="primary" id="upload-btn">Subir foto</button>
+        <input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp" multiple />
+        <div class="upload-actions">
+          <button type="submit" class="primary" id="upload-btn">Subir fotos</button>
+          <button type="button" class="secondary" id="folder-btn">Subir carpeta</button>
         </div>
+        <input type="file" id="folder-input" webkitdirectory directory multiple style="display:none;" />
       </form>
+      <div id="upload-progress" class="upload-progress" style="display:none;">
+        <div class="upload-progress-bar"><div class="upload-progress-fill" id="upload-progress-fill"></div></div>
+        <span id="upload-progress-text"></span>
+      </div>
     </div>
     <div id="upload-message" class="message"></div>
 
@@ -174,35 +180,67 @@
       }
     }
 
-    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+    const photoInput = document.getElementById('photo-input');
+    const folderInput = document.getElementById('folder-input');
+    const uploadBtn = document.getElementById('upload-btn');
+    const progressBox = document.getElementById('upload-progress');
+    const progressFill = document.getElementById('upload-progress-fill');
+    const progressText = document.getElementById('upload-progress-text');
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+    document.getElementById('folder-btn').addEventListener('click', () => folderInput.click());
+    folderInput.addEventListener('change', () => uploadFiles(folderInput.files));
+
+    document.getElementById('upload-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const fileInput = document.getElementById('photo-input');
-      if (!fileInput.files[0]) return;
-
-      const btn = document.getElementById('upload-btn');
-      btn.disabled = true;
-      btn.textContent = 'Subiendo...';
-
-      const formData = new FormData();
-      formData.append('photo', fileInput.files[0]);
-
-      try {
-        await apiRequest(`/api/galleries/${slug}/photos`, {
-          method: 'POST',
-          body: formData,
-          token: session.token,
-          isFormData: true,
-        });
-        fileInput.value = '';
-        showMessage(uploadMessage, 'Foto subida.', 'success');
-        loadPhotos();
-      } catch (err) {
-        showMessage(uploadMessage, err.message, 'error');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Subir foto';
-      }
+      uploadFiles(photoInput.files);
     });
+
+    async function uploadFiles(fileList) {
+      const files = Array.from(fileList).filter((f) => ALLOWED_TYPES.includes(f.type));
+      if (!files.length) {
+        showMessage(uploadMessage, 'No se encontraron imágenes válidas (JPG, PNG o WEBP).', 'error');
+        return;
+      }
+
+      uploadBtn.disabled = true;
+      progressBox.style.display = 'block';
+      let done = 0;
+      let failed = 0;
+
+      for (const file of files) {
+        progressText.textContent = `Subiendo ${done + 1} de ${files.length}: ${file.name}`;
+        progressFill.style.width = `${Math.round((done / files.length) * 100)}%`;
+
+        const formData = new FormData();
+        formData.append('photo', file);
+
+        try {
+          await apiRequest(`/api/galleries/${slug}/photos`, {
+            method: 'POST',
+            body: formData,
+            token: session.token,
+            isFormData: true,
+          });
+        } catch (err) {
+          failed += 1;
+        }
+        done += 1;
+      }
+
+      progressFill.style.width = '100%';
+      progressText.textContent = failed
+        ? `Listo: ${done - failed} de ${done} fotos subidas (${failed} fallaron).`
+        : `${done} foto${done === 1 ? '' : 's'} subida${done === 1 ? '' : 's'} correctamente.`;
+
+      showMessage(uploadMessage, failed ? 'Algunas fotos no se pudieron subir.' : 'Fotos subidas.', failed ? 'error' : 'success');
+      photoInput.value = '';
+      folderInput.value = '';
+      uploadBtn.disabled = false;
+      loadPhotos();
+
+      setTimeout(() => { progressBox.style.display = 'none'; }, 3000);
+    }
 
     // --- Selecciones de clientes ---
     async function loadSelections() {
