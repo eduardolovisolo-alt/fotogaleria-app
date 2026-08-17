@@ -28,13 +28,13 @@ document.addEventListener('DOMContentLoaded', injectWhatsAppButton);
 // funcionando), pero frena al usuario casual. La protección real es la
 // marca de agua que ya llevan estas imágenes.
 document.addEventListener('contextmenu', (e) => {
-  if (e.target.closest && e.target.closest('.protected-photo')) {
+  if (e.target.closest && e.target.closest('.protected-photo, .img-shield')) {
     e.preventDefault();
   }
 });
 
 document.addEventListener('dragstart', (e) => {
-  if (e.target.closest && e.target.closest('.protected-photo')) {
+  if (e.target.closest && e.target.closest('.protected-photo, .img-shield')) {
     e.preventDefault();
   }
 });
