@@ -1,6 +1,4 @@
-const API_BASE_URL = window.location.origin.includes('4000')
-  ? window.location.origin
-  : 'http://localhost:4000';
+const API_BASE_URL = window.location.origin;
 
 async function apiRequest(path, { method = 'GET', body, token, isFormData = false, extraHeaders = {} } = {}) {
   const headers = { ...extraHeaders };
