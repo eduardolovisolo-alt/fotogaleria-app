@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS photos (
   uploaded_by INT NOT NULL,
   original_key VARCHAR(500) NOT NULL,
   thumbnail_key VARCHAR(500) NOT NULL,
+  preview_key VARCHAR(500) NULL,
   file_name VARCHAR(255) NOT NULL,
   width INT NULL,
   height INT NULL,

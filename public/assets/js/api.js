@@ -22,6 +22,23 @@ function injectWhatsAppButton() {
 
 document.addEventListener('DOMContentLoaded', injectWhatsAppButton);
 
+// Protección liviana contra descarga casual de fotos: bloquea clic derecho,
+// mantener presionado (long-press) y arrastrar sobre imágenes marcadas como
+// "protected-photo". No es infalible (dev tools, captura de pantalla siguen
+// funcionando), pero frena al usuario casual. La protección real es la
+// marca de agua que ya llevan estas imágenes.
+document.addEventListener('contextmenu', (e) => {
+  if (e.target.closest && e.target.closest('.protected-photo')) {
+    e.preventDefault();
+  }
+});
+
+document.addEventListener('dragstart', (e) => {
+  if (e.target.closest && e.target.closest('.protected-photo')) {
+    e.preventDefault();
+  }
+});
+
 async function apiRequest(path, { method = 'GET', body, token, isFormData = false, extraHeaders = {} } = {}) {
   const headers = { ...extraHeaders };
   if (!isFormData) headers['Content-Type'] = 'application/json';

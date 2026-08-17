@@ -1,10 +1,10 @@
 const pool = require('../config/db');
 
-async function create({ galleryId, uploadedBy, originalKey, thumbnailKey, fileName, width, height, sizeBytes }) {
+async function create({ galleryId, uploadedBy, originalKey, thumbnailKey, previewKey, fileName, width, height, sizeBytes }) {
   const [result] = await pool.query(
-    `INSERT INTO photos (gallery_id, uploaded_by, original_key, thumbnail_key, file_name, width, height, size_bytes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [galleryId, uploadedBy, originalKey, thumbnailKey, fileName, width, height, sizeBytes]
+    `INSERT INTO photos (gallery_id, uploaded_by, original_key, thumbnail_key, preview_key, file_name, width, height, size_bytes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [galleryId, uploadedBy, originalKey, thumbnailKey, previewKey, fileName, width, height, sizeBytes]
   );
   return findById(result.insertId);
 }

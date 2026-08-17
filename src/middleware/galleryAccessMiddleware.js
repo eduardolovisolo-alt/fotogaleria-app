@@ -10,25 +10,31 @@ async function loadGallery(req, res, next) {
   next();
 }
 
-function requireGalleryAccess(req, res, next) {
+function detectGalleryOwner(req) {
   const gallery = req.gallery;
-
-  if (gallery.is_public) {
-    return next();
-  }
-
-  // El admin dueño de la galería siempre puede verla, con su propio JWT de sesión.
   const authHeader = req.headers.authorization || '';
   const [scheme, bearerToken] = authHeader.split(' ');
   if (scheme === 'Bearer' && bearerToken) {
     try {
       const payload = verifyToken(bearerToken);
       if (payload.sub === gallery.admin_id) {
-        return next();
+        req.isGalleryOwner = true;
       }
     } catch {
-      // no era un token de admin válido, seguimos probando el token de galería
+      // no era un token de admin válido, no hacemos nada
     }
+  }
+}
+
+function requireGalleryAccess(req, res, next) {
+  const gallery = req.gallery;
+
+  // El admin dueño de la galería siempre puede verla, con su propio JWT de sesión,
+  // sea la galería pública o privada.
+  detectGalleryOwner(req);
+
+  if (gallery.is_public || req.isGalleryOwner) {
+    return next();
   }
 
   const galleryToken = req.headers['x-gallery-token'] || '';

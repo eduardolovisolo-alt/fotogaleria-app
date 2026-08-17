@@ -893,3 +893,13 @@ body.has-selection-bar .whatsapp-float {
     right: 16px;
   }
 }
+
+.protected-photo {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  user-drag: none;
+  pointer-events: auto;
+}
