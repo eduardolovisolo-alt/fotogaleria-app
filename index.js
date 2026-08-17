@@ -2,7 +2,9 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
+const multer = require('multer');
 const authRoutes = require('./src/routes/authRoutes');
+const photoRoutes = require('./src/routes/photoRoutes');
 
 const app = express();
 
@@ -12,10 +14,20 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
+app.use('/api/photos', photoRoutes);
 
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ error: 'Error interno del servidor.' });
+  if (err instanceof multer.MulterError) {
+    const message = err.code === 'LIMIT_FILE_SIZE'
+      ? 'El archivo supera el tamaño máximo permitido (25MB).'
+      : err.message;
+    return res.status(400).json({ error: message });
+  }
+  if (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message || 'Error interno del servidor.' });
+  }
+  next();
 });
 
 const PORT = process.env.PORT || 4000;

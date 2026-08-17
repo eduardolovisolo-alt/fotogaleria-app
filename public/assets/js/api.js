@@ -2,14 +2,15 @@ const API_BASE_URL = window.location.origin.includes('4000')
   ? window.location.origin
   : 'http://localhost:4000';
 
-async function apiRequest(path, { method = 'GET', body, token } = {}) {
-  const headers = { 'Content-Type': 'application/json' };
+async function apiRequest(path, { method = 'GET', body, token, isFormData = false } = {}) {
+  const headers = {};
+  if (!isFormData) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const res = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
+    body: isFormData ? body : (body ? JSON.stringify(body) : undefined),
   });
 
   const data = await res.json().catch(() => ({}));
