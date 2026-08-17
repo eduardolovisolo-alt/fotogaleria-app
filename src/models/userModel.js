@@ -21,4 +21,33 @@ async function create({ name, email, passwordHash, role = 'client' }) {
   return findById(result.insertId);
 }
 
-module.exports = { findByEmail, findById, create };
+async function setResetToken(userId, tokenHash, expiresAt) {
+  await pool.query(
+    'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?',
+    [tokenHash, expiresAt, userId]
+  );
+}
+
+async function findByValidResetToken(tokenHash) {
+  const [rows] = await pool.query(
+    'SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > NOW() LIMIT 1',
+    [tokenHash]
+  );
+  return rows[0] || null;
+}
+
+async function resetPassword(userId, passwordHash) {
+  await pool.query(
+    'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?',
+    [passwordHash, userId]
+  );
+}
+
+module.exports = {
+  findByEmail,
+  findById,
+  create,
+  setResetToken,
+  findByValidResetToken,
+  resetPassword,
+};
