@@ -46,7 +46,10 @@
     <button class="lightbox-nav lightbox-prev" id="lightbox-prev" aria-label="Anterior">‹</button>
     <button class="lightbox-nav lightbox-next" id="lightbox-next" aria-label="Siguiente">›</button>
     <div class="lightbox-content">
-      <img id="lightbox-img" class="protected-photo" src="" alt="" draggable="false" />
+      <div class="lightbox-img-wrap">
+        <img id="lightbox-img" class="protected-photo" src="" alt="" draggable="false" />
+        <div class="img-shield"></div>
+      </div>
       <button class="lightbox-select" id="lightbox-select">Seleccionar</button>
     </div>
   </div>
@@ -134,9 +137,10 @@
         card.dataset.id = photo.id;
         card.innerHTML = `
           <img class="protected-photo" src="${photo.thumbnailUrl}" alt="${photo.file_name}" loading="lazy" draggable="false" />
+          <div class="img-shield"></div>
           <button class="select-indicator" title="Seleccionar">✓</button>
         `;
-        card.querySelector('img').addEventListener('click', () => openLightbox(index));
+        card.querySelector('.img-shield').addEventListener('click', () => openLightbox(index));
         card.querySelector('.select-indicator').addEventListener('click', (e) => {
           e.stopPropagation();
           toggleSelect(photo.id, card);

@@ -901,5 +901,30 @@ body.has-selection-bar .whatsapp-float {
   user-select: none;
   -webkit-user-drag: none;
   user-drag: none;
-  pointer-events: auto;
+  pointer-events: none;
+}
+
+/*
+  El menú de "guardar imagen" al mantener presionado en celulares se dispara
+  sobre el propio <img>, y ni preventDefault(contextmenu) ni -webkit-touch-callout
+  lo bloquean de forma confiable en todos los navegadores. Esta capa transparente
+  se pone encima y recibe el toque/clic en su lugar, así el dedo nunca llega a
+  tocar la imagen real.
+*/
+.img-shield {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  cursor: pointer;
+  background: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.lightbox-img-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 92vw;
+  max-height: 80vh;
 }

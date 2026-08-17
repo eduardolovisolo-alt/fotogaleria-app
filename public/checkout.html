@@ -109,6 +109,7 @@
       grid.innerHTML = selectedPhotos.map((p) => `
         <div class="photo-card">
           <img class="protected-photo" src="${p.thumbnailUrl}" alt="${p.file_name}" loading="lazy" draggable="false" />
+          <div class="img-shield"></div>
         </div>
       `).join('');
     }

@@ -1,38 +1,30 @@
+const path = require('path');
+const fs = require('fs');
 const sharp = require('sharp');
 
-const WATERMARK_TEXT = process.env.WATERMARK_TEXT || 'FOTOGALERÍA PRO';
+const TILE_PATH = path.join(__dirname, '..', 'assets', 'watermark-tile.png');
+const tileBuffer = fs.readFileSync(TILE_PATH);
+const TILE_META = sharp(tileBuffer).metadata();
 
-function buildWatermarkSvg(width, height, text) {
-  const fontSize = Math.max(16, Math.round(width / 15));
-  const stepX = fontSize * (text.length * 0.6 + 4);
-  const stepY = fontSize * 5;
-  let items = '';
+// Usamos un tile PNG pre-renderizado (no texto SVG generado en caliente) porque
+// el servidor de producción puede no tener instaladas las fuentes necesarias,
+// lo que hacía que el texto se viera como cuadrados vacíos.
+async function watermarkBuffer(buffer) {
+  const [baseMeta, tileMeta] = await Promise.all([sharp(buffer).metadata(), TILE_META]);
 
-  for (let y = -height * 0.5; y < height * 1.5; y += stepY) {
-    for (let x = -width * 0.5; x < width * 1.5; x += stepX) {
-      items += `<text x="${x}" y="${y}" transform="rotate(-30 ${x} ${y})">${text}</text>`;
-    }
+  let tile = tileBuffer;
+  // Si la foto es más chica que el tile (miniatura muy pequeña, imagen rara),
+  // lo reducimos para que sharp pueda aplicarlo igual sin romper.
+  if (tileMeta.width > baseMeta.width || tileMeta.height > baseMeta.height) {
+    const scale = Math.min(baseMeta.width / tileMeta.width, baseMeta.height / tileMeta.height, 1) * 0.9;
+    tile = await sharp(tileBuffer)
+      .resize(Math.max(1, Math.round(tileMeta.width * scale)), Math.max(1, Math.round(tileMeta.height * scale)))
+      .toBuffer();
   }
 
-  return `
-    <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-      <style>
-        text {
-          fill: rgba(255,255,255,0.32);
-          font-size: ${fontSize}px;
-          font-family: 'Segoe UI', Arial, sans-serif;
-          font-weight: 700;
-        }
-      </style>
-      ${items}
-    </svg>`;
-}
-
-async function watermarkBuffer(buffer, text = WATERMARK_TEXT) {
-  const image = sharp(buffer);
-  const meta = await image.metadata();
-  const svg = buildWatermarkSvg(meta.width, meta.height, text);
-  return image.composite([{ input: Buffer.from(svg) }]).toBuffer();
+  return sharp(buffer)
+    .composite([{ input: tile, tile: true, blend: 'over' }])
+    .toBuffer();
 }
 
 module.exports = { watermarkBuffer };
