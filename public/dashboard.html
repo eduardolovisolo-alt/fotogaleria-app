@@ -23,21 +23,10 @@
         <span class="role-badge" id="user-role"></span>
       </div>
     </div>
+
+    <a href="admin.html" class="admin-link" id="admin-link" style="display:none;">Ir al panel de galerías →</a>
+
     <button class="logout-btn" id="logout-btn">Cerrar sesión</button>
-
-    <div class="upload-box">
-      <form id="upload-form">
-        <input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp" required />
-        <div>
-          <button type="submit" class="primary" id="upload-btn">Subir foto</button>
-        </div>
-      </form>
-    </div>
-    <div id="upload-message" class="message"></div>
-
-    <p class="gallery-title">Mis fotos</p>
-    <div class="gallery-grid" id="gallery-grid"></div>
-    <p class="empty-state" id="empty-state" style="display:none;">Todavía no subiste ninguna foto.</p>
   </main>
 
   <script src="assets/js/api.js"></script>
@@ -52,6 +41,9 @@
         document.getElementById('user-email').textContent = user.email;
         document.getElementById('user-role').textContent = user.role;
         document.getElementById('avatar').textContent = user.name.charAt(0).toUpperCase();
+        if (user.role === 'admin') {
+          document.getElementById('admin-link').style.display = 'block';
+        }
       } catch (err) {
         clearSession();
         window.location.href = 'index.html';
@@ -66,79 +58,7 @@
     document.getElementById('logout-btn').addEventListener('click', logout);
     document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); logout(); });
 
-    const uploadForm = document.getElementById('upload-form');
-    const uploadBtn = document.getElementById('upload-btn');
-    const uploadMessage = document.getElementById('upload-message');
-    const galleryGrid = document.getElementById('gallery-grid');
-    const emptyState = document.getElementById('empty-state');
-
-    function showUploadMessage(text, type) {
-      uploadMessage.textContent = text;
-      uploadMessage.className = `message show ${type}`;
-    }
-
-    function renderGallery(photos) {
-      galleryGrid.innerHTML = '';
-      emptyState.style.display = photos.length ? 'none' : 'block';
-      photos.forEach((photo) => {
-        const card = document.createElement('div');
-        card.className = 'photo-card';
-        card.innerHTML = `
-          <img src="${photo.thumbnailUrl}" alt="${photo.file_name}" loading="lazy" />
-          <button class="delete-btn" data-id="${photo.id}" title="Eliminar">✕</button>
-        `;
-        galleryGrid.appendChild(card);
-      });
-
-      galleryGrid.querySelectorAll('.delete-btn').forEach((btn) => {
-        btn.addEventListener('click', () => deletePhoto(btn.dataset.id));
-      });
-    }
-
-    async function loadPhotos() {
-      try {
-        const { photos } = await apiRequest('/api/photos', { token: session.token });
-        renderGallery(photos);
-      } catch (err) {
-        showUploadMessage(err.message, 'error');
-      }
-    }
-
-    async function deletePhoto(id) {
-      try {
-        await apiRequest(`/api/photos/${id}`, { method: 'DELETE', token: session.token });
-        loadPhotos();
-      } catch (err) {
-        showUploadMessage(err.message, 'error');
-      }
-    }
-
-    uploadForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const fileInput = document.getElementById('photo-input');
-      if (!fileInput.files[0]) return;
-
-      uploadBtn.disabled = true;
-      uploadBtn.textContent = 'Subiendo...';
-
-      const formData = new FormData();
-      formData.append('photo', fileInput.files[0]);
-
-      try {
-        await apiRequest('/api/photos', { method: 'POST', body: formData, token: session.token, isFormData: true });
-        fileInput.value = '';
-        showUploadMessage('Foto subida correctamente.', 'success');
-        loadPhotos();
-      } catch (err) {
-        showUploadMessage(err.message, 'error');
-      } finally {
-        uploadBtn.disabled = false;
-        uploadBtn.textContent = 'Subir foto';
-      }
-    });
-
     loadProfile();
-    loadPhotos();
   </script>
 </body>
 </html>

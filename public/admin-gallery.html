@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FotoGalería Pro — Administrar galería</title>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Foto<span>Galería</span> Pro</div>
+    <nav>
+      <a href="admin.html">Mis galerías</a>
+      <a href="#" id="logout-link">Cerrar sesión</a>
+    </nav>
+  </header>
+
+  <main class="admin-page">
+    <a href="admin.html" class="back-link">← Volver a mis galerías</a>
+    <div class="page-header">
+      <h1 id="gallery-name">Cargando...</h1>
+      <span class="badge" id="gallery-badge"></span>
+    </div>
+
+    <div class="share-box">
+      <input type="text" id="share-link" readonly />
+      <button class="secondary" id="copy-link-btn">Copiar</button>
+    </div>
+
+    <div class="create-panel">
+      <h2>Configuración de acceso</h2>
+      <div id="settings-message" class="message"></div>
+      <div class="inline-fields">
+        <label class="checkbox-field">
+          <input type="checkbox" id="settings-public" />
+          Galería pública (sin contraseña)
+        </label>
+      </div>
+      <div class="field" id="settings-password-field" style="margin-top:14px;">
+        <label for="settings-password">Nueva contraseña (dejar vacío para no cambiarla)</label>
+        <input type="text" id="settings-password" placeholder="Contraseña para los clientes" />
+      </div>
+      <button class="secondary" id="save-settings-btn" style="margin-top:10px;">Guardar cambios</button>
+    </div>
+
+    <div class="upload-box">
+      <form id="upload-form">
+        <input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp" required />
+        <div>
+          <button type="submit" class="primary" id="upload-btn">Subir foto</button>
+        </div>
+      </form>
+    </div>
+    <div id="upload-message" class="message"></div>
+
+    <p class="gallery-title">Fotos de esta galería</p>
+    <div class="gallery-grid" id="gallery-grid"></div>
+    <p class="empty-state" id="empty-state" style="display:none;">Todavía no subiste ninguna foto.</p>
+
+    <p class="gallery-title">Selecciones de clientes</p>
+    <div id="selections-box" class="empty-state">Cargando...</div>
+  </main>
+
+  <script src="assets/js/api.js"></script>
+  <script>
+    const session = getSession();
+    if (!session) window.location.href = 'index.html';
+
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get('slug');
+    if (!slug) window.location.href = 'admin.html';
+
+    let currentGallery = null;
+
+    document.getElementById('logout-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      clearSession();
+      window.location.href = 'index.html';
+    });
+
+    function showMessage(el, text, type) {
+      el.textContent = text;
+      el.className = `message show ${type}`;
+    }
+
+    async function loadGalleries() {
+      const { galleries } = await apiRequest('/api/galleries', { token: session.token });
+      const gallery = galleries.find((g) => g.slug === slug);
+      if (!gallery) {
+        window.location.href = 'admin.html';
+        return;
+      }
+      currentGallery = gallery;
+
+      document.getElementById('gallery-name').textContent = gallery.name;
+      const badge = document.getElementById('gallery-badge');
+      badge.textContent = gallery.isPublic ? 'Pública' : 'Privada';
+      badge.className = `badge ${gallery.isPublic ? 'public' : 'private'}`;
+
+      document.getElementById('share-link').value = `${window.location.origin}/gallery.html?slug=${gallery.slug}`;
+      document.getElementById('settings-public').checked = gallery.isPublic;
+      document.getElementById('settings-password-field').style.display = gallery.isPublic ? 'none' : 'block';
+    }
+
+    document.getElementById('copy-link-btn').addEventListener('click', () => {
+      const input = document.getElementById('share-link');
+      input.select();
+      navigator.clipboard.writeText(input.value);
+      const btn = document.getElementById('copy-link-btn');
+      btn.textContent = '¡Copiado!';
+      setTimeout(() => { btn.textContent = 'Copiar'; }, 1500);
+    });
+
+    document.getElementById('settings-public').addEventListener('change', (e) => {
+      document.getElementById('settings-password-field').style.display = e.target.checked ? 'none' : 'block';
+    });
+
+    document.getElementById('save-settings-btn').addEventListener('click', async () => {
+      const messageEl = document.getElementById('settings-message');
+      const isPublic = document.getElementById('settings-public').checked;
+      const password = document.getElementById('settings-password').value;
+
+      try {
+        await apiRequest(`/api/galleries/${currentGallery.id}`, {
+          method: 'PUT',
+          token: session.token,
+          body: { isPublic, password: password || undefined },
+        });
+        showMessage(messageEl, 'Configuración guardada.', 'success');
+        document.getElementById('settings-password').value = '';
+        loadGalleries();
+      } catch (err) {
+        showMessage(messageEl, err.message, 'error');
+      }
+    });
+
+    // --- Fotos ---
+    const galleryGrid = document.getElementById('gallery-grid');
+    const emptyState = document.getElementById('empty-state');
+    const uploadMessage = document.getElementById('upload-message');
+
+    function renderPhotos(photos) {
+      galleryGrid.innerHTML = '';
+      emptyState.style.display = photos.length ? 'none' : 'block';
+      photos.forEach((photo) => {
+        const card = document.createElement('div');
+        card.className = 'photo-card';
+        card.innerHTML = `
+          <img src="${photo.thumbnailUrl}" alt="${photo.file_name}" loading="lazy" />
+          <button class="delete-btn" data-id="${photo.id}" title="Eliminar">✕</button>
+        `;
+        galleryGrid.appendChild(card);
+      });
+      galleryGrid.querySelectorAll('.delete-btn').forEach((btn) => {
+        btn.addEventListener('click', () => deletePhoto(btn.dataset.id));
+      });
+    }
+
+    async function loadPhotos() {
+      try {
+        const { photos } = await apiRequest(`/api/galleries/${slug}/photos`, { token: session.token });
+        renderPhotos(photos);
+      } catch (err) {
+        showMessage(uploadMessage, err.message, 'error');
+      }
+    }
+
+    async function deletePhoto(id) {
+      try {
+        await apiRequest(`/api/galleries/${slug}/photos/${id}`, { method: 'DELETE', token: session.token });
+        loadPhotos();
+      } catch (err) {
+        showMessage(uploadMessage, err.message, 'error');
+      }
+    }
+
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById('photo-input');
+      if (!fileInput.files[0]) return;
+
+      const btn = document.getElementById('upload-btn');
+      btn.disabled = true;
+      btn.textContent = 'Subiendo...';
+
+      const formData = new FormData();
+      formData.append('photo', fileInput.files[0]);
+
+      try {
+        await apiRequest(`/api/galleries/${slug}/photos`, {
+          method: 'POST',
+          body: formData,
+          token: session.token,
+          isFormData: true,
+        });
+        fileInput.value = '';
+        showMessage(uploadMessage, 'Foto subida.', 'success');
+        loadPhotos();
+      } catch (err) {
+        showMessage(uploadMessage, err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Subir foto';
+      }
+    });
+
+    // --- Selecciones de clientes ---
+    async function loadSelections() {
+      const box = document.getElementById('selections-box');
+      try {
+        const { selections } = await apiRequest(`/api/galleries/${currentGallery.id}/selections`, { token: session.token });
+        if (!selections.length) {
+          box.textContent = 'Todavía no hay selecciones de clientes.';
+          return;
+        }
+        const groups = {};
+        selections.forEach((s) => {
+          groups[s.client_token] = groups[s.client_token] || [];
+          groups[s.client_token].push(s.file_name);
+        });
+        box.className = '';
+        box.innerHTML = Object.entries(groups)
+          .map(([token, files], i) => `<p><strong>Cliente ${i + 1}:</strong> ${files.length} foto(s) seleccionada(s) — ${files.join(', ')}</p>`)
+          .join('');
+      } catch (err) {
+        box.textContent = 'No se pudieron cargar las selecciones.';
+      }
+    }
+
+    (async () => {
+      await loadGalleries();
+      loadPhotos();
+      loadSelections();
+    })();
+  </script>
+</body>
+</html>

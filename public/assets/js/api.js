@@ -2,8 +2,8 @@ const API_BASE_URL = window.location.origin.includes('4000')
   ? window.location.origin
   : 'http://localhost:4000';
 
-async function apiRequest(path, { method = 'GET', body, token, isFormData = false } = {}) {
-  const headers = {};
+async function apiRequest(path, { method = 'GET', body, token, isFormData = false, extraHeaders = {} } = {}) {
+  const headers = { ...extraHeaders };
   if (!isFormData) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
 
@@ -15,7 +15,9 @@ async function apiRequest(path, { method = 'GET', body, token, isFormData = fals
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.error || 'Ocurrió un error inesperado.');
+    const error = new Error(data.error || 'Ocurrió un error inesperado.');
+    error.locked = !!data.locked;
+    throw error;
   }
   return data;
 }
@@ -34,4 +36,13 @@ function getSession() {
 function clearSession() {
   localStorage.removeItem('fg_token');
   localStorage.removeItem('fg_user');
+}
+
+function getClientToken() {
+  let token = localStorage.getItem('fg_client_token');
+  if (!token) {
+    token = crypto.randomUUID();
+    localStorage.setItem('fg_client_token', token);
+  }
+  return token;
 }

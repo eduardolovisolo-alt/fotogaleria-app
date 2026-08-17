@@ -31,7 +31,8 @@ async function register(req, res) {
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = await userModel.create({ name, email, passwordHash });
+    const role = (await userModel.anyAdminExists()) ? 'client' : 'admin';
+    const user = await userModel.create({ name, email, passwordHash, role });
 
     const token = signToken({ sub: user.id, role: user.role });
     res.status(201).json({ user, token });

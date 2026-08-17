@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FotoGalería Pro — Panel de galerías</title>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Foto<span>Galería</span> Pro</div>
+    <nav>
+      <a href="dashboard.html">Mi cuenta</a>
+      <a href="#" id="logout-link">Cerrar sesión</a>
+    </nav>
+  </header>
+
+  <main class="admin-page">
+    <div class="page-header">
+      <h1>Mis galerías</h1>
+    </div>
+
+    <div class="create-panel">
+      <h2>Crear nueva galería</h2>
+      <div id="create-message" class="message"></div>
+      <form id="create-form">
+        <div class="field">
+          <label for="gallery-name">Nombre</label>
+          <input type="text" id="gallery-name" required placeholder="Ej: Boda Sofía y Juan" />
+        </div>
+        <div class="inline-fields">
+          <label class="checkbox-field">
+            <input type="checkbox" id="gallery-public" checked />
+            Galería pública (sin contraseña)
+          </label>
+        </div>
+        <div class="field" id="password-field" style="display:none; margin-top:14px;">
+          <label for="gallery-password">Contraseña de acceso</label>
+          <input type="text" id="gallery-password" placeholder="Contraseña para los clientes" />
+        </div>
+        <div style="margin-top:16px;">
+          <button type="submit" class="primary" id="create-btn" style="width:auto; padding:11px 24px;">Crear galería</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="list-message" class="message"></div>
+    <div class="gallery-list" id="gallery-list"></div>
+    <p class="empty-state" id="empty-state" style="display:none;">Todavía no creaste ninguna galería.</p>
+  </main>
+
+  <script src="assets/js/api.js"></script>
+  <script>
+    const session = getSession();
+    if (!session) window.location.href = 'index.html';
+
+    document.getElementById('logout-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      clearSession();
+      window.location.href = 'index.html';
+    });
+
+    async function guardAdmin() {
+      try {
+        const { user } = await apiRequest('/api/auth/me', { token: session.token });
+        if (user.role !== 'admin') {
+          window.location.href = 'dashboard.html';
+        }
+      } catch {
+        clearSession();
+        window.location.href = 'index.html';
+      }
+    }
+
+    const publicCheckbox = document.getElementById('gallery-public');
+    const passwordField = document.getElementById('password-field');
+    publicCheckbox.addEventListener('change', () => {
+      passwordField.style.display = publicCheckbox.checked ? 'none' : 'block';
+    });
+
+    function showMessage(el, text, type) {
+      el.textContent = text;
+      el.className = `message show ${type}`;
+    }
+
+    const listEl = document.getElementById('gallery-list');
+    const emptyEl = document.getElementById('empty-state');
+    const listMessage = document.getElementById('list-message');
+
+    function renderGalleries(galleries) {
+      listEl.innerHTML = '';
+      emptyEl.style.display = galleries.length ? 'none' : 'block';
+
+      galleries.forEach((g) => {
+        const row = document.createElement('div');
+        row.className = 'gallery-row';
+        row.innerHTML = `
+          <div class="gallery-row-info">
+            <h3>${g.name}</h3>
+            <div class="meta">
+              <span class="badge ${g.isPublic ? 'public' : 'private'}">${g.isPublic ? 'Pública' : 'Privada'}</span>
+              <span>${g.photoCount} foto${g.photoCount === 1 ? '' : 's'}</span>
+            </div>
+          </div>
+          <div class="gallery-row-actions">
+            <a class="secondary" href="admin-gallery.html?slug=${g.slug}">Administrar</a>
+            <button class="secondary" data-id="${g.id}" data-action="delete">Eliminar</button>
+          </div>
+        `;
+        listEl.appendChild(row);
+      });
+
+      listEl.querySelectorAll('[data-action="delete"]').forEach((btn) => {
+        btn.addEventListener('click', () => deleteGallery(btn.dataset.id));
+      });
+    }
+
+    async function loadGalleries() {
+      try {
+        const { galleries } = await apiRequest('/api/galleries', { token: session.token });
+        renderGalleries(galleries);
+      } catch (err) {
+        showMessage(listMessage, err.message, 'error');
+      }
+    }
+
+    async function deleteGallery(id) {
+      if (!confirm('¿Eliminar esta galería y todas sus fotos? Esta acción no se puede deshacer.')) return;
+      try {
+        await apiRequest(`/api/galleries/${id}`, { method: 'DELETE', token: session.token });
+        loadGalleries();
+      } catch (err) {
+        showMessage(listMessage, err.message, 'error');
+      }
+    }
+
+    document.getElementById('create-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('create-btn');
+      const messageEl = document.getElementById('create-message');
+      btn.disabled = true;
+      btn.textContent = 'Creando...';
+
+      try {
+        const name = document.getElementById('gallery-name').value.trim();
+        const isPublic = publicCheckbox.checked;
+        const password = document.getElementById('gallery-password').value;
+
+        await apiRequest('/api/galleries', {
+          method: 'POST',
+          token: session.token,
+          body: { name, isPublic, password },
+        });
+
+        document.getElementById('create-form').reset();
+        passwordField.style.display = 'none';
+        showMessage(messageEl, 'Galería creada.', 'success');
+        loadGalleries();
+      } catch (err) {
+        showMessage(messageEl, err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Crear galería';
+      }
+    });
+
+    guardAdmin();
+    loadGalleries();
+  </script>
+</body>
+</html>

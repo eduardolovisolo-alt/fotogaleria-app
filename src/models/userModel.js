@@ -13,6 +13,11 @@ async function findById(id) {
   return rows[0] || null;
 }
 
+async function anyAdminExists() {
+  const [rows] = await pool.query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
+  return rows.length > 0;
+}
+
 async function create({ name, email, passwordHash, role = 'client' }) {
   const [result] = await pool.query(
     'INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)',
@@ -46,6 +51,7 @@ async function resetPassword(userId, passwordHash) {
 module.exports = {
   findByEmail,
   findById,
+  anyAdminExists,
   create,
   setResetToken,
   findByValidResetToken,

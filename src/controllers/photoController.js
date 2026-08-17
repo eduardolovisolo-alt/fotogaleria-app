@@ -10,16 +10,16 @@ const SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hora
 
 async function uploadPhoto(req, res) {
   try {
+    const gallery = req.gallery;
     if (!req.file) {
       return res.status(400).json({ error: 'No se recibió ningún archivo.' });
     }
 
-    const ownerId = req.user.sub;
     const id = randomUUID();
     const ext = req.file.mimetype === 'image/png' ? 'png' : req.file.mimetype === 'image/webp' ? 'webp' : 'jpg';
 
-    const originalKey = `photos/${ownerId}/${id}.${ext}`;
-    const thumbnailKey = `thumbnails/${ownerId}/${id}.${ext}`;
+    const originalKey = `photos/${gallery.id}/${id}.${ext}`;
+    const thumbnailKey = `thumbnails/${gallery.id}/${id}.${ext}`;
 
     const metadata = await sharp(req.file.buffer).metadata();
     const thumbnailBuffer = await sharp(req.file.buffer)
@@ -41,7 +41,8 @@ async function uploadPhoto(req, res) {
     }));
 
     const photo = await photoModel.create({
-      ownerId,
+      galleryId: gallery.id,
+      uploadedBy: req.user.sub,
       originalKey,
       thumbnailKey,
       fileName: req.file.originalname,
@@ -59,7 +60,7 @@ async function uploadPhoto(req, res) {
 
 async function listPhotos(req, res) {
   try {
-    const photos = await photoModel.findByOwner(req.user.sub);
+    const photos = await photoModel.findByGallery(req.gallery.id);
     const withUrls = await Promise.all(photos.map(withSignedUrls));
     res.json({ photos: withUrls });
   } catch (err) {
@@ -70,8 +71,8 @@ async function listPhotos(req, res) {
 
 async function deletePhoto(req, res) {
   try {
-    const photo = await photoModel.findById(req.params.id);
-    if (!photo || photo.owner_id !== req.user.sub) {
+    const photo = await photoModel.findById(req.params.photoId);
+    if (!photo || photo.gallery_id !== req.gallery.id) {
       return res.status(404).json({ error: 'Foto no encontrada.' });
     }
 
@@ -94,4 +95,4 @@ async function withSignedUrls(photo) {
   return { ...photo, url, thumbnailUrl };
 }
 
-module.exports = { uploadPhoto, listPhotos, deletePhoto };
+module.exports = { uploadPhoto, listPhotos, deletePhoto, withSignedUrls };

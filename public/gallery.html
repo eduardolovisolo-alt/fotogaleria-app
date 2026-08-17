@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FotoGalería Pro</title>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Foto<span>Galería</span> Pro</div>
+  </header>
+
+  <div id="lock-view" class="lock-screen" style="display:none;">
+    <div class="card">
+      <h1 id="lock-title">Galería privada</h1>
+      <p class="subtitle">Ingresá la contraseña que te compartió el fotógrafo</p>
+      <div id="lock-message" class="message"></div>
+      <form id="unlock-form">
+        <div class="field">
+          <label for="gallery-password">Contraseña</label>
+          <input type="text" id="gallery-password" required />
+        </div>
+        <button type="submit" class="primary">Entrar</button>
+      </form>
+    </div>
+  </div>
+
+  <main id="gallery-view" class="client-page" style="display:none;">
+    <div class="client-header">
+      <h1 id="gallery-name">Cargando...</h1>
+      <p>Elegí tus fotos favoritas tocándolas</p>
+    </div>
+
+    <div class="gallery-grid" id="gallery-grid"></div>
+    <p class="empty-state" id="empty-state" style="display:none;">Esta galería todavía no tiene fotos.</p>
+  </main>
+
+  <div class="selection-bar" id="selection-bar" style="display:none;">
+    <span id="selection-count">0 fotos seleccionadas</span>
+    <button class="primary" id="continue-btn">Continuar</button>
+  </div>
+
+  <script src="assets/js/api.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get('slug');
+    if (!slug) {
+      document.body.innerHTML = '<p style="text-align:center; margin-top:100px; color:#9a9a9f;">Falta el link de la galería.</p>';
+      throw new Error('missing slug');
+    }
+
+    const clientToken = getClientToken();
+    let galleryToken = sessionStorage.getItem(`gallery_token_${slug}`) || null;
+    let selectedIds = new Set();
+
+    function galleryHeaders() {
+      return galleryToken ? { 'X-Gallery-Token': galleryToken } : {};
+    }
+
+    async function init() {
+      try {
+        const { gallery } = await apiRequest(`/api/galleries/${slug}`, { extraHeaders: galleryHeaders() });
+        if (gallery.locked) {
+          showLockScreen(gallery.name);
+        } else {
+          showGallery(gallery.name);
+        }
+      } catch (err) {
+        document.body.innerHTML = `<p style="text-align:center; margin-top:100px; color:#9a9a9f;">${err.message}</p>`;
+      }
+    }
+
+    function showLockScreen(name) {
+      document.getElementById('lock-title').textContent = name;
+      document.getElementById('lock-view').style.display = 'flex';
+      document.getElementById('gallery-view').style.display = 'none';
+    }
+
+    async function showGallery(name) {
+      document.getElementById('lock-view').style.display = 'none';
+      document.getElementById('gallery-view').style.display = 'block';
+      document.getElementById('gallery-name').textContent = name;
+      await loadSelections();
+      await loadPhotos();
+    }
+
+    document.getElementById('unlock-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const messageEl = document.getElementById('lock-message');
+      const password = document.getElementById('gallery-password').value;
+
+      try {
+        const { token } = await apiRequest(`/api/galleries/${slug}/unlock`, {
+          method: 'POST',
+          body: { password },
+        });
+        galleryToken = token;
+        sessionStorage.setItem(`gallery_token_${slug}`, token);
+        const { gallery } = await apiRequest(`/api/galleries/${slug}`, { extraHeaders: galleryHeaders() });
+        showGallery(gallery.name);
+      } catch (err) {
+        messageEl.textContent = err.message;
+        messageEl.className = 'message show error';
+      }
+    });
+
+    const galleryGrid = document.getElementById('gallery-grid');
+    const emptyState = document.getElementById('empty-state');
+
+    async function loadPhotos() {
+      const { photos } = await apiRequest(`/api/galleries/${slug}/photos`, { extraHeaders: galleryHeaders() });
+      emptyState.style.display = photos.length ? 'none' : 'block';
+      galleryGrid.innerHTML = '';
+      photos.forEach((photo) => {
+        const card = document.createElement('div');
+        card.className = `client-photo-card${selectedIds.has(photo.id) ? ' selected' : ''}`;
+        card.dataset.id = photo.id;
+        card.innerHTML = `
+          <img src="${photo.thumbnailUrl}" alt="${photo.file_name}" loading="lazy" />
+          <div class="select-indicator">✓</div>
+        `;
+        card.addEventListener('click', () => toggleSelect(photo.id, card));
+        galleryGrid.appendChild(card);
+      });
+      updateSelectionBar();
+    }
+
+    async function loadSelections() {
+      try {
+        const { selectedPhotoIds } = await apiRequest(
+          `/api/galleries/${slug}/selections/mine?clientToken=${clientToken}`,
+          { extraHeaders: galleryHeaders() }
+        );
+        selectedIds = new Set(selectedPhotoIds);
+      } catch {
+        selectedIds = new Set();
+      }
+    }
+
+    async function toggleSelect(photoId, card) {
+      const nowSelected = !selectedIds.has(photoId);
+      try {
+        await apiRequest(`/api/galleries/${slug}/selections`, {
+          method: 'POST',
+          extraHeaders: galleryHeaders(),
+          body: { photoId, clientToken, selected: nowSelected },
+        });
+        if (nowSelected) {
+          selectedIds.add(photoId);
+          card.classList.add('selected');
+        } else {
+          selectedIds.delete(photoId);
+          card.classList.remove('selected');
+        }
+        updateSelectionBar();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function updateSelectionBar() {
+      const bar = document.getElementById('selection-bar');
+      const count = selectedIds.size;
+      if (count === 0) {
+        bar.style.display = 'none';
+        return;
+      }
+      bar.style.display = 'flex';
+      document.getElementById('selection-count').textContent = `${count} foto${count === 1 ? '' : 's'} seleccionada${count === 1 ? '' : 's'}`;
+    }
+
+    document.getElementById('continue-btn').addEventListener('click', () => {
+      alert('El pago y descarga de las fotos seleccionadas está en construcción. ¡Pronto vas a poder continuar desde acá!');
+    });
+
+    init();
+  </script>
+</body>
+</html>
