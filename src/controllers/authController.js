@@ -60,7 +60,7 @@ async function login(req, res) {
     }
 
     const token = signToken({ sub: user.id, role: user.role });
-    const { password_hash, ...safeUser } = user;
+    const safeUser = await userModel.findById(user.id);
     res.json({ user: safeUser, token });
   } catch (err) {
     console.error('login error:', err);
