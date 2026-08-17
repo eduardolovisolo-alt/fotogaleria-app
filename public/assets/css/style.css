@@ -755,37 +755,43 @@ button.secondary:hover {
   position: absolute;
   top: 18px;
   right: 20px;
-  background: rgba(255,255,255,0.1);
-  border: none;
+  background: rgba(30, 30, 32, 0.9);
+  border: 1px solid rgba(255,255,255,0.3);
   color: var(--text);
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.4);
 }
 
 .lightbox-close:hover {
-  background: rgba(255,255,255,0.2);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a1a1a;
 }
 
 .lightbox-nav {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(255,255,255,0.1);
-  border: none;
+  background: rgba(30, 30, 32, 0.9);
+  border: 1px solid rgba(255,255,255,0.3);
   color: var(--text);
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  font-size: 1.8rem;
+  font-size: 2rem;
   cursor: pointer;
   line-height: 1;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.4);
 }
 
 .lightbox-nav:hover {
-  background: rgba(255,255,255,0.2);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a1a1a;
 }
 
 .lightbox-prev {
@@ -798,9 +804,9 @@ button.secondary:hover {
 
 @media (max-width: 600px) {
   .lightbox-nav {
-    width: 40px;
-    height: 40px;
-    font-size: 1.4rem;
+    width: 46px;
+    height: 46px;
+    font-size: 1.6rem;
   }
 
   .lightbox-prev {
