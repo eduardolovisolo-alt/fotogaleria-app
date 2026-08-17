@@ -2,6 +2,7 @@ const express = require('express');
 const galleryController = require('../controllers/galleryController');
 const photoController = require('../controllers/photoController');
 const selectionController = require('../controllers/selectionController');
+const orderController = require('../controllers/orderController');
 const { protect, requireRole } = require('../middleware/authMiddleware');
 const { loadGallery, requireGalleryAccess } = require('../middleware/galleryAccessMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -15,6 +16,7 @@ router.get('/', protect, requireRole('admin'), galleryController.listMyGalleries
 router.put('/:id', protect, requireRole('admin'), galleryController.updateGallery);
 router.delete('/:id', protect, requireRole('admin'), galleryController.deleteGallery);
 router.get('/:id/selections', protect, requireRole('admin'), galleryController.getSelections);
+router.get('/:id/orders', protect, requireRole('admin'), orderController.listGalleryOrders);
 
 // Subida/borrado de fotos: requiere admin logueado, dueño de la galería (verificado en el controller vía slug)
 router.post(
@@ -41,6 +43,7 @@ router.post('/:slug/unlock', loadGallery, galleryController.unlockGallery);
 router.get('/:slug/photos', loadGallery, requireGalleryAccess, photoController.listPhotos);
 router.post('/:slug/selections', loadGallery, requireGalleryAccess, selectionController.toggleSelection);
 router.get('/:slug/selections/mine', loadGallery, requireGalleryAccess, selectionController.getMySelections);
+router.post('/:slug/orders', loadGallery, requireGalleryAccess, orderController.createOrder);
 
 function requireGalleryOwner(req, res, next) {
   if (req.gallery.admin_id !== req.user.sub) {

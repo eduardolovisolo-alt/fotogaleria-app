@@ -9,13 +9,16 @@ const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
 
 async function createGallery(req, res) {
   try {
-    const { name, isPublic = true, password } = req.body;
+    const { name, isPublic = true, password, pricePerPhoto } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'El nombre de la galería es obligatorio.' });
     }
     if (!isPublic && !password) {
       return res.status(400).json({ error: 'Las galerías privadas necesitan una contraseña.' });
+    }
+    if (pricePerPhoto !== undefined && pricePerPhoto !== '' && Number(pricePerPhoto) < 0) {
+      return res.status(400).json({ error: 'El precio no puede ser negativo.' });
     }
 
     const slug = await uniqueSlug(name);
@@ -27,6 +30,7 @@ async function createGallery(req, res) {
       slug,
       isPublic: !!isPublic,
       passwordHash,
+      pricePerPhoto: pricePerPhoto ? Number(pricePerPhoto) : null,
     });
 
     res.status(201).json({ gallery: toSafeGallery(gallery) });
@@ -62,6 +66,7 @@ async function getGalleryInfo(req, res) {
       slug: gallery.slug,
       isPublic: !!gallery.is_public,
       locked,
+      pricePerPhoto: gallery.price_per_photo,
     },
   });
 }
@@ -98,7 +103,7 @@ async function updateGallery(req, res) {
       return res.status(404).json({ error: 'Galería no encontrada.' });
     }
 
-    const { name, isPublic, password, clearPassword } = req.body;
+    const { name, isPublic, password, clearPassword, pricePerPhoto } = req.body;
     let passwordHash;
 
     if (isPublic === false && password) {
@@ -107,12 +112,16 @@ async function updateGallery(req, res) {
     if (isPublic === false && !password && !gallery.password_hash && !clearPassword) {
       return res.status(400).json({ error: 'Las galerías privadas necesitan una contraseña.' });
     }
+    if (pricePerPhoto !== undefined && pricePerPhoto !== '' && Number(pricePerPhoto) < 0) {
+      return res.status(400).json({ error: 'El precio no puede ser negativo.' });
+    }
 
     const updated = await galleryModel.update(gallery.id, {
       name,
       isPublic,
       passwordHash,
       clearPassword: isPublic === true || clearPassword,
+      pricePerPhoto: pricePerPhoto !== undefined ? (pricePerPhoto ? Number(pricePerPhoto) : null) : undefined,
     });
 
     res.json({ gallery: toSafeGallery(updated) });
@@ -164,6 +173,7 @@ function toSafeGallery(gallery) {
     slug: gallery.slug,
     isPublic: !!gallery.is_public,
     hasPassword: !!gallery.password_hash,
+    pricePerPhoto: gallery.price_per_photo,
     createdAt: gallery.created_at,
   };
 }

@@ -63,6 +63,7 @@
     const clientToken = getClientToken();
     let galleryToken = sessionStorage.getItem(`gallery_token_${slug}`) || null;
     let selectedIds = new Set();
+    let pricePerPhoto = 0;
 
     function galleryHeaders() {
       return galleryToken ? { 'X-Gallery-Token': galleryToken } : {};
@@ -71,6 +72,7 @@
     async function init() {
       try {
         const { gallery } = await apiRequest(`/api/galleries/${slug}`, { extraHeaders: galleryHeaders() });
+        pricePerPhoto = Number(gallery.pricePerPhoto) || 0;
         if (gallery.locked) {
           showLockScreen(gallery.name);
         } else {
@@ -108,6 +110,7 @@
         galleryToken = token;
         sessionStorage.setItem(`gallery_token_${slug}`, token);
         const { gallery } = await apiRequest(`/api/galleries/${slug}`, { extraHeaders: galleryHeaders() });
+        pricePerPhoto = Number(gallery.pricePerPhoto) || 0;
         showGallery(gallery.name);
       } catch (err) {
         messageEl.textContent = err.message;
@@ -239,11 +242,12 @@
         return;
       }
       bar.style.display = 'flex';
-      document.getElementById('selection-count').textContent = `${count} foto${count === 1 ? '' : 's'} seleccionada${count === 1 ? '' : 's'}`;
+      const priceText = pricePerPhoto ? ` — $${(pricePerPhoto * count).toLocaleString('es-AR')}` : '';
+      document.getElementById('selection-count').textContent = `${count} foto${count === 1 ? '' : 's'} seleccionada${count === 1 ? '' : 's'}${priceText}`;
     }
 
     document.getElementById('continue-btn').addEventListener('click', () => {
-      alert('El pago y descarga de las fotos seleccionadas está en construcción. ¡Pronto vas a poder continuar desde acá!');
+      window.location.href = `checkout.html?slug=${slug}`;
     });
 
     init();

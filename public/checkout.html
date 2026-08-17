@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FotoGalería Pro — Confirmar selección</title>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Foto<span>Galería</span> Pro</div>
+    <nav>
+      <a href="#" id="back-link">← Volver a la galería</a>
+    </nav>
+  </header>
+
+  <main class="admin-page" id="checkout-view">
+    <div class="page-header">
+      <h1 id="gallery-name">Cargando...</h1>
+    </div>
+
+    <div class="gallery-grid" id="checkout-grid"></div>
+
+    <div class="create-panel" style="margin-top:24px;">
+      <div id="total-row" style="display:flex; justify-content:space-between; font-size:1.1rem; margin-bottom:18px;">
+        <span>Total</span>
+        <strong id="total-amount">$0</strong>
+      </div>
+
+      <div id="form-message" class="message"></div>
+      <form id="checkout-form">
+        <div class="field">
+          <label for="client-name">Nombre y apellido</label>
+          <input type="text" id="client-name" required />
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <label for="client-email">Email</label>
+          <input type="email" id="client-email" required />
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <label for="client-phone">Teléfono (opcional)</label>
+          <input type="text" id="client-phone" />
+        </div>
+        <button type="submit" class="primary" id="confirm-btn" style="margin-top:20px;">Confirmar pedido</button>
+      </form>
+    </div>
+  </main>
+
+  <main class="admin-page" id="confirmation-view" style="display:none;">
+    <div class="create-panel" style="text-align:center;">
+      <h2>¡Pedido recibido!</h2>
+      <p style="color:var(--text-muted);">Pedido #<span id="order-id"></span> — <span id="order-summary"></span></p>
+      <p style="color:var(--text-muted); margin-top:16px;">Nos vamos a poner en contacto para coordinar el pago y la entrega de tus fotos.</p>
+      <a href="#" id="back-to-gallery" class="admin-link" style="margin-top:20px;">Volver a la galería</a>
+    </div>
+  </main>
+
+  <script src="assets/js/api.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get('slug');
+    if (!slug) window.location.href = 'index.html';
+
+    document.getElementById('back-link').href = `gallery.html?slug=${slug}`;
+    document.getElementById('back-to-gallery').href = `gallery.html?slug=${slug}`;
+
+    const clientToken = getClientToken();
+    const galleryToken = sessionStorage.getItem(`gallery_token_${slug}`) || null;
+    function galleryHeaders() {
+      return galleryToken ? { 'X-Gallery-Token': galleryToken } : {};
+    }
+
+    let pricePerPhoto = 0;
+    let selectedPhotos = [];
+
+    async function init() {
+      try {
+        const { gallery } = await apiRequest(`/api/galleries/${slug}`, { extraHeaders: galleryHeaders() });
+        if (gallery.locked) {
+          window.location.href = `gallery.html?slug=${slug}`;
+          return;
+        }
+        document.getElementById('gallery-name').textContent = gallery.name;
+        pricePerPhoto = Number(gallery.pricePerPhoto) || 0;
+
+        const { selectedPhotoIds } = await apiRequest(
+          `/api/galleries/${slug}/selections/mine?clientToken=${clientToken}`,
+          { extraHeaders: galleryHeaders() }
+        );
+
+        if (!selectedPhotoIds.length) {
+          document.getElementById('checkout-view').innerHTML = `
+            <p class="empty-state">Todavía no seleccionaste ninguna foto. <a href="gallery.html?slug=${slug}">Volvé a la galería</a> para elegir.</p>
+          `;
+          return;
+        }
+
+        const { photos } = await apiRequest(`/api/galleries/${slug}/photos`, { extraHeaders: galleryHeaders() });
+        selectedPhotos = photos.filter((p) => selectedPhotoIds.includes(p.id));
+        renderPhotos();
+        renderTotal();
+      } catch (err) {
+        document.getElementById('checkout-view').innerHTML = `<p class="empty-state">${err.message}</p>`;
+      }
+    }
+
+    function renderPhotos() {
+      const grid = document.getElementById('checkout-grid');
+      grid.innerHTML = selectedPhotos.map((p) => `
+        <div class="photo-card">
+          <img src="${p.thumbnailUrl}" alt="${p.file_name}" loading="lazy" />
+        </div>
+      `).join('');
+    }
+
+    function renderTotal() {
+      const total = pricePerPhoto * selectedPhotos.length;
+      document.getElementById('total-row').style.display = pricePerPhoto ? 'flex' : 'none';
+      document.getElementById('total-amount').textContent = `$${total.toLocaleString('es-AR')} (${selectedPhotos.length} foto${selectedPhotos.length === 1 ? '' : 's'})`;
+    }
+
+    document.getElementById('checkout-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('confirm-btn');
+      const messageEl = document.getElementById('form-message');
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+
+      try {
+        const clientName = document.getElementById('client-name').value.trim();
+        const clientEmail = document.getElementById('client-email').value.trim();
+        const clientPhone = document.getElementById('client-phone').value.trim();
+
+        const { order } = await apiRequest(`/api/galleries/${slug}/orders`, {
+          method: 'POST',
+          extraHeaders: galleryHeaders(),
+          body: { clientToken, clientName, clientEmail, clientPhone },
+        });
+
+        document.getElementById('checkout-view').style.display = 'none';
+        document.getElementById('confirmation-view').style.display = 'block';
+        document.getElementById('order-id').textContent = order.id;
+        document.getElementById('order-summary').textContent = pricePerPhoto
+          ? `${order.photo_count} foto(s) por $${Number(order.total_amount).toLocaleString('es-AR')}`
+          : `${order.photo_count} foto(s)`;
+      } catch (err) {
+        messageEl.textContent = err.message;
+        messageEl.className = 'message show error';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Confirmar pedido';
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>

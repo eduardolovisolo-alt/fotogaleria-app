@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FotoGalería Pro — Contacto</title>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Foto<span>Galería</span> Pro</div>
+    <nav>
+      <a href="index.html">Ingresar</a>
+    </nav>
+  </header>
+
+  <main class="page">
+    <div class="card">
+      <h1>Contactanos</h1>
+      <p class="subtitle">¿Tenés dudas o querés coordinar una sesión? Escribinos.</p>
+
+      <div id="message" class="message"></div>
+
+      <form id="contact-form">
+        <div class="field">
+          <label for="name">Nombre</label>
+          <input type="text" id="name" required />
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" required />
+        </div>
+        <div class="field">
+          <label for="phone">Teléfono (opcional)</label>
+          <input type="text" id="phone" />
+        </div>
+        <div class="field">
+          <label for="msg">Mensaje</label>
+          <textarea id="msg" rows="4" required style="width:100%; padding:11px 14px; background:#0e0e10; border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:0.95rem; font-family:inherit; resize:vertical;"></textarea>
+        </div>
+        <button type="submit" class="primary" id="submit-btn">Enviar mensaje</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="assets/js/api.js"></script>
+  <script>
+    const form = document.getElementById('contact-form');
+    const messageEl = document.getElementById('message');
+    const submitBtn = document.getElementById('submit-btn');
+
+    function showMessage(text, type) {
+      messageEl.textContent = text;
+      messageEl.className = `message show ${type}`;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Enviando...';
+
+      try {
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const msg = document.getElementById('msg').value.trim();
+
+        await apiRequest('/api/contact', { method: 'POST', body: { name, email, phone, message: msg } });
+        form.reset();
+        showMessage('¡Gracias! Tu mensaje fue enviado, te vamos a responder pronto.', 'success');
+      } catch (err) {
+        showMessage(err.message, 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Enviar mensaje';
+      }
+    });
+  </script>
+</body>
+</html>

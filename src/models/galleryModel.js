@@ -1,9 +1,9 @@
 const pool = require('../config/db');
 
-async function create({ adminId, name, slug, isPublic, passwordHash }) {
+async function create({ adminId, name, slug, isPublic, passwordHash, pricePerPhoto }) {
   const [result] = await pool.query(
-    'INSERT INTO galleries (admin_id, name, slug, is_public, password_hash) VALUES (?, ?, ?, ?, ?)',
-    [adminId, name, slug, isPublic, passwordHash || null]
+    'INSERT INTO galleries (admin_id, name, slug, is_public, password_hash, price_per_photo) VALUES (?, ?, ?, ?, ?, ?)',
+    [adminId, name, slug, isPublic, passwordHash || null, pricePerPhoto || null]
   );
   return findById(result.insertId);
 }
@@ -31,7 +31,7 @@ async function slugExists(slug) {
   return rows.length > 0;
 }
 
-async function update(id, { name, isPublic, passwordHash, clearPassword }) {
+async function update(id, { name, isPublic, passwordHash, clearPassword, pricePerPhoto }) {
   const fields = [];
   const values = [];
 
@@ -49,6 +49,10 @@ async function update(id, { name, isPublic, passwordHash, clearPassword }) {
   }
   if (clearPassword) {
     fields.push('password_hash = NULL');
+  }
+  if (pricePerPhoto !== undefined) {
+    fields.push('price_per_photo = ?');
+    values.push(pricePerPhoto || null);
   }
 
   if (!fields.length) return findById(id);

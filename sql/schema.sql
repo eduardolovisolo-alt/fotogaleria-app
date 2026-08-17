@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS galleries (
   slug VARCHAR(160) NOT NULL UNIQUE,
   is_public BOOLEAN NOT NULL DEFAULT TRUE,
   password_hash VARCHAR(255) NULL,
+  price_per_photo DECIMAL(10,2) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE
@@ -46,4 +47,38 @@ CREATE TABLE IF NOT EXISTS selections (
   UNIQUE KEY uniq_selection (gallery_id, photo_id, client_token),
   FOREIGN KEY (gallery_id) REFERENCES galleries(id) ON DELETE CASCADE,
   FOREIGN KEY (photo_id) REFERENCES photos(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS orders (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  gallery_id INT NOT NULL,
+  client_token VARCHAR(64) NOT NULL,
+  client_name VARCHAR(150) NOT NULL,
+  client_email VARCHAR(190) NOT NULL,
+  client_phone VARCHAR(40) NULL,
+  photo_count INT NOT NULL,
+  total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  status ENUM('pending', 'paid', 'cancelled') NOT NULL DEFAULT 'pending',
+  payment_method ENUM('mercadopago', 'transferencia') NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (gallery_id) REFERENCES galleries(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS order_items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  order_id INT NOT NULL,
+  photo_id INT NOT NULL,
+  price DECIMAL(10,2) NOT NULL DEFAULT 0,
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  FOREIGN KEY (photo_id) REFERENCES photos(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  email VARCHAR(190) NOT NULL,
+  phone VARCHAR(40) NULL,
+  message TEXT NOT NULL,
+  read_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

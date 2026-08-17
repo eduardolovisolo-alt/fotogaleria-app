@@ -822,3 +822,38 @@ button.secondary:hover {
     right: 10px;
   }
 }
+
+.order-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 10px;
+  text-align: left;
+  font-size: 0.88rem;
+}
+
+.order-row .meta {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.order-row select {
+  background: #0e0e10;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 600px) {
+  .order-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

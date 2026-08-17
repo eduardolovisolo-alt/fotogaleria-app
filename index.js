@@ -5,6 +5,8 @@ const cors = require('cors');
 const multer = require('multer');
 const authRoutes = require('./src/routes/authRoutes');
 const galleryRoutes = require('./src/routes/galleryRoutes');
+const contactRoutes = require('./src/routes/contactRoutes');
+const orderRoutes = require('./src/routes/orderRoutes');
 
 const app = express();
 
@@ -15,6 +17,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/galleries', galleryRoutes);
+app.use('/api/contact', contactRoutes);
+app.use('/api/orders', orderRoutes);
 
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {

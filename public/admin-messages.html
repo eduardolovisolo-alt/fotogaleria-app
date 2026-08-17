@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FotoGalería Pro — Mensajes de contacto</title>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Foto<span>Galería</span> Pro</div>
+    <nav>
+      <a href="admin.html">Mis galerías</a>
+      <a href="#" id="logout-link">Cerrar sesión</a>
+    </nav>
+  </header>
+
+  <main class="admin-page">
+    <div class="page-header">
+      <h1>Mensajes de contacto</h1>
+    </div>
+
+    <div id="messages-box" class="empty-state">Cargando...</div>
+  </main>
+
+  <script src="assets/js/api.js"></script>
+  <script>
+    const session = getSession();
+    if (!session) window.location.href = 'index.html';
+
+    document.getElementById('logout-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      clearSession();
+      window.location.href = 'index.html';
+    });
+
+    async function loadMessages() {
+      const box = document.getElementById('messages-box');
+      try {
+        const { messages } = await apiRequest('/api/contact', { token: session.token });
+        if (!messages.length) {
+          box.textContent = 'Todavía no recibiste mensajes.';
+          return;
+        }
+        box.className = '';
+        box.innerHTML = messages.map((m) => `
+          <div class="order-row" style="align-items:flex-start; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; width:100%;">
+              <strong>${m.name}</strong>
+              <span class="meta">${new Date(m.created_at).toLocaleString('es-AR')}</span>
+            </div>
+            <span class="meta">${m.email}${m.phone ? ` · ${m.phone}` : ''}</span>
+            <p style="margin:4px 0 0;">${m.message}</p>
+            ${!m.read_at ? `<button class="secondary" data-id="${m.id}" style="align-self:flex-end;">Marcar como leído</button>` : '<span class="badge public">Leído</span>'}
+          </div>
+        `).join('');
+
+        box.querySelectorAll('button[data-id]').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            await apiRequest(`/api/contact/${btn.dataset.id}/read`, { method: 'PUT', token: session.token });
+            loadMessages();
+          });
+        });
+      } catch (err) {
+        box.textContent = 'No se pudieron cargar los mensajes.';
+      }
+    }
+
+    loadMessages();
+  </script>
+</body>
+</html>

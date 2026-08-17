@@ -10,6 +10,7 @@
   <header class="topbar">
     <div class="brand">Foto<span>Galería</span> Pro</div>
     <nav>
+      <a href="admin-messages.html">Mensajes</a>
       <a href="dashboard.html">Mi cuenta</a>
       <a href="#" id="logout-link">Cerrar sesión</a>
     </nav>
@@ -37,6 +38,10 @@
         <div class="field" id="password-field" style="display:none; margin-top:14px;">
           <label for="gallery-password">Contraseña de acceso</label>
           <input type="text" id="gallery-password" placeholder="Contraseña para los clientes" />
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <label for="gallery-price">Precio por foto (opcional, en tu moneda)</label>
+          <input type="number" id="gallery-price" min="0" step="0.01" placeholder="Ej: 1500 (dejar vacío si no vendés fotos)" />
         </div>
         <div style="margin-top:16px;">
           <button type="submit" class="primary" id="create-btn" style="width:auto; padding:11px 24px;">Crear galería</button>
@@ -100,6 +105,7 @@
             <div class="meta">
               <span class="badge ${g.isPublic ? 'public' : 'private'}">${g.isPublic ? 'Pública' : 'Privada'}</span>
               <span>${g.photoCount} foto${g.photoCount === 1 ? '' : 's'}</span>
+              ${g.pricePerPhoto ? `<span>$${Number(g.pricePerPhoto).toLocaleString('es-AR')} / foto</span>` : ''}
             </div>
           </div>
           <div class="gallery-row-actions">
@@ -145,11 +151,12 @@
         const name = document.getElementById('gallery-name').value.trim();
         const isPublic = publicCheckbox.checked;
         const password = document.getElementById('gallery-password').value;
+        const pricePerPhoto = document.getElementById('gallery-price').value;
 
         await apiRequest('/api/galleries', {
           method: 'POST',
           token: session.token,
-          body: { name, isPublic, password },
+          body: { name, isPublic, password, pricePerPhoto },
         });
 
         document.getElementById('create-form').reset();
