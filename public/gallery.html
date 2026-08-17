@@ -239,9 +239,11 @@
       const count = selectedIds.size;
       if (count === 0) {
         bar.style.display = 'none';
+        document.body.classList.remove('has-selection-bar');
         return;
       }
       bar.style.display = 'flex';
+      document.body.classList.add('has-selection-bar');
       const priceText = pricePerPhoto ? ` — $${(pricePerPhoto * count).toLocaleString('es-AR')}` : '';
       document.getElementById('selection-count').textContent = `${count} foto${count === 1 ? '' : 's'} seleccionada${count === 1 ? '' : 's'}${priceText}`;
     }
