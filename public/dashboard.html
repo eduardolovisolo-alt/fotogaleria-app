@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FotoGalería Pro — Mi cuenta</title>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Foto<span>Galería</span> Pro</div>
+    <nav>
+      <a href="#" id="logout-link">Cerrar sesión</a>
+    </nav>
+  </header>
+
+  <main class="dashboard">
+    <div class="profile-card">
+      <div class="avatar" id="avatar">?</div>
+      <div class="profile-info">
+        <h2 id="user-name">Cargando...</h2>
+        <p id="user-email"></p>
+        <span class="role-badge" id="user-role"></span>
+      </div>
+    </div>
+    <button class="logout-btn" id="logout-btn">Cerrar sesión</button>
+  </main>
+
+  <script src="assets/js/api.js"></script>
+  <script>
+    const session = getSession();
+    if (!session) window.location.href = 'index.html';
+
+    async function loadProfile() {
+      try {
+        const { user } = await apiRequest('/api/auth/me', { token: session.token });
+        document.getElementById('user-name').textContent = user.name;
+        document.getElementById('user-email').textContent = user.email;
+        document.getElementById('user-role').textContent = user.role;
+        document.getElementById('avatar').textContent = user.name.charAt(0).toUpperCase();
+      } catch (err) {
+        clearSession();
+        window.location.href = 'index.html';
+      }
+    }
+
+    function logout() {
+      clearSession();
+      window.location.href = 'index.html';
+    }
+
+    document.getElementById('logout-btn').addEventListener('click', logout);
+    document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); logout(); });
+
+    loadProfile();
+  </script>
+</body>
+</html>
