@@ -274,7 +274,7 @@
     }
 
     document.getElementById('continue-btn').addEventListener('click', () => {
-      window.location.href = `checkout.html?slug=${slug}`;
+      window.location.href = `checkout.html?slug=${encodeURIComponent(slug)}`;
     });
 
     init();

@@ -107,7 +107,9 @@ async function createOrder(req, res) {
 
 async function listGalleryOrders(req, res) {
   try {
-    const gallery = await galleryModel.findById(req.params.id);
+    const key = req.params.id || req.params.slug;
+    let gallery = req.gallery || await galleryModel.findById(key);
+    if (!gallery) gallery = await galleryModel.findBySlug(key);
     if (!gallery || !sameId(gallery.admin_id, req.user.sub)) {
       return res.status(404).json({ error: 'Galería no encontrada.' });
     }

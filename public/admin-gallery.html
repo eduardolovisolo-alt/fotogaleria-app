@@ -23,6 +23,7 @@
     <div class="page-header">
       <h1 id="gallery-name">Cargando...</h1>
       <span class="badge" id="gallery-badge"></span>
+      <a href="admin-orders.html" class="secondary" style="margin-left:auto;">Ver todos los pedidos</a>
     </div>
 
     <div class="share-box">
@@ -134,7 +135,7 @@
     <p class="gallery-title">Selecciones de clientes</p>
     <div id="selections-box" class="empty-state">Cargando...</div>
 
-    <p class="gallery-title">Pedidos</p>
+    <p class="gallery-title" id="pedidos">Pedidos de esta galería</p>
     <div id="orders-box" class="empty-state">Cargando...</div>
   </main>
 
@@ -431,9 +432,10 @@
     async function loadOrders() {
       const box = document.getElementById('orders-box');
       try {
-        const { orders } = await apiRequest(`/api/galleries/${currentGallery.id}/orders`, { token: session.token });
+        const { orders } = await apiRequest(`${galleryApi}/admin-orders`, { token: session.token });
         if (!orders.length) {
-          box.textContent = 'Todavía no hay pedidos.';
+          box.className = 'empty-state';
+          box.innerHTML = 'Todavía no hay pedidos en esta galería. Cuando un cliente confirme, aparecen acá y en <a href="admin-orders.html">Pedidos</a>.';
           return;
         }
         box.className = '';
@@ -441,24 +443,25 @@
           const replyUrl = buildPhotographerReplyWhatsAppUrl(o, currentGallery.name);
           const photos = (o.items || []).map((item) => item.fileName).filter(Boolean);
           return `
-          <div class="order-row">
-            <div>
-              <strong>${o.client_name}</strong>
-              <span class="badge ${o.status}">${STATUS_LABELS[o.status] || o.status}</span>
-              <br/>
-              <span class="meta">${o.client_email}${o.client_phone ? ` · ${o.client_phone}` : ''}</span><br/>
-              <span class="meta">${o.photo_count} foto(s) · $${Number(o.total_amount).toLocaleString('es-AR')} · ${new Date(o.created_at).toLocaleString('es-AR')}</span>
-              ${photos.length ? `<span class="meta">${photos.join(', ')}</span>` : ''}
+          <article class="order-card">
+            <div class="order-card-top">
+              <div>
+                <h3>${o.client_name} <span class="badge ${o.status}">${STATUS_LABELS[o.status] || o.status}</span></h3>
+                <p class="meta">Pedido #${o.id} · ${new Date(o.created_at).toLocaleString('es-AR')}</p>
+                <p class="meta">${o.client_email}${o.client_phone ? ` · ${o.client_phone}` : ''}</p>
+                <p class="meta">${o.photo_count} foto(s)${Number(o.total_amount) ? ` · $${Number(o.total_amount).toLocaleString('es-AR')}` : ''}</p>
+              </div>
+              <div class="gallery-row-actions">
+                ${replyUrl ? `<a class="wa-btn wa-btn-sm" href="${replyUrl}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ''}
+                <select data-id="${o.id}" class="order-status">
+                  <option value="pending" ${o.status === 'pending' ? 'selected' : ''}>Pendiente</option>
+                  <option value="paid" ${o.status === 'paid' ? 'selected' : ''}>Pagado</option>
+                  <option value="cancelled" ${o.status === 'cancelled' ? 'selected' : ''}>Cancelado</option>
+                </select>
+              </div>
             </div>
-            <div class="gallery-row-actions">
-              ${replyUrl ? `<a class="wa-btn wa-btn-sm" href="${replyUrl}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ''}
-              <select data-id="${o.id}" class="order-status">
-                <option value="pending" ${o.status === 'pending' ? 'selected' : ''}>Pendiente</option>
-                <option value="paid" ${o.status === 'paid' ? 'selected' : ''}>Pagado</option>
-                <option value="cancelled" ${o.status === 'cancelled' ? 'selected' : ''}>Cancelado</option>
-              </select>
-            </div>
-          </div>
+            ${photos.length ? `<ul class="order-photos">${photos.map((name) => `<li>${name}</li>`).join('')}</ul>` : ''}
+          </article>
         `;
         }).join('');
 
@@ -466,7 +469,8 @@
           select.addEventListener('change', () => updateOrderStatus(select.dataset.id, select.value));
         });
       } catch (err) {
-        box.textContent = 'No se pudieron cargar los pedidos.';
+        box.className = 'empty-state';
+        box.textContent = err.message || 'No se pudieron cargar los pedidos.';
       }
     }
 

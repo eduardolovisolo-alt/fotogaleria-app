@@ -18,6 +18,14 @@ function whatsappHref(text, number = WHATSAPP_NUMBER) {
   return `https://wa.me/${target}?text=${encodeURIComponent(text)}`;
 }
 
+function openWhatsApp(url, linkEl) {
+  if (linkEl) linkEl.href = url;
+  if (!url || url === '#') return false;
+  const popup = window.open(url, '_blank', 'noopener,noreferrer');
+  if (!popup) window.location.href = url;
+  return true;
+}
+
 function formatMoneyAR(amount) {
   return Number(amount || 0).toLocaleString('es-AR');
 }
