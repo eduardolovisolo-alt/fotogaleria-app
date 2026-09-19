@@ -673,6 +673,10 @@ a.secondary:hover {
     font-size: 0.85rem;
   }
 
+  .topbar nav a[href="#como-funciona"] {
+    display: none;
+  }
+
   .page {
     padding: 24px 16px;
   }
