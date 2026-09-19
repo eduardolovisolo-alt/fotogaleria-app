@@ -55,6 +55,7 @@ async function createOrder(req, res) {
       clientPhone: clientPhone ? clientPhone.trim() : null,
       photoIds,
       pricePerPhoto: gallery.price_per_photo,
+      discountTiers: gallery.discount_tiers,
     });
 
     let photoNames = [];
@@ -123,8 +124,16 @@ async function listGalleryOrders(req, res) {
 
 async function listMyOrders(req, res) {
   try {
+    const user = await userModel.findById(req.user.sub);
+    const autoDays = Number(user?.order_auto_delete_days) || 0;
+    if (autoDays > 0) {
+      await orderModel.deleteCancelledOlderThan(req.user.sub, autoDays);
+    }
     const orders = await withItems(await orderModel.findByAdmin(req.user.sub));
-    res.json({ orders });
+    res.json({
+      orders,
+      settings: { cancelAutoDeleteDays: autoDays || 0 },
+    });
   } catch (err) {
     console.error('listMyOrders error:', err);
     res.status(500).json({ error: 'Error al listar los pedidos.' });
@@ -143,7 +152,7 @@ async function updateOrderStatus(req, res) {
     }
 
     const { status } = req.body;
-    if (!['pending', 'paid', 'cancelled'].includes(status)) {
+    if (!['pending', 'paid', 'shipped', 'cancelled'].includes(status)) {
       return res.status(400).json({ error: 'Estado inválido.' });
     }
 
@@ -155,4 +164,42 @@ async function updateOrderStatus(req, res) {
   }
 }
 
-module.exports = { createOrder, listGalleryOrders, listMyOrders, updateOrderStatus };
+async function deleteOrder(req, res) {
+  try {
+    const order = await orderModel.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ error: 'Pedido no encontrado.' });
+    }
+    const gallery = await galleryModel.findById(order.gallery_id);
+    if (!gallery || !sameId(gallery.admin_id, req.user.sub)) {
+      return res.status(404).json({ error: 'Pedido no encontrado.' });
+    }
+    await orderModel.deleteById(order.id);
+    res.json({ message: 'Pedido eliminado.' });
+  } catch (err) {
+    console.error('deleteOrder error:', err);
+    res.status(500).json({ error: 'Error al eliminar el pedido.' });
+  }
+}
+
+async function updateOrderSettings(req, res) {
+  try {
+    const days = req.body.cancelAutoDeleteDays;
+    const user = await userModel.updateOrderAutoDeleteDays(req.user.sub, days);
+    res.json({
+      settings: { cancelAutoDeleteDays: Number(user.order_auto_delete_days) || 0 },
+    });
+  } catch (err) {
+    console.error('updateOrderSettings error:', err);
+    res.status(500).json({ error: 'Error al guardar la configuración de pedidos.' });
+  }
+}
+
+module.exports = {
+  createOrder,
+  listGalleryOrders,
+  listMyOrders,
+  updateOrderStatus,
+  deleteOrder,
+  updateOrderSettings,
+};

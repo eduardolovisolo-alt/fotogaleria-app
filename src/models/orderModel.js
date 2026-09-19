@@ -1,19 +1,33 @@
 const pool = require('../config/db');
+const { quotePhotoOrder, parseDiscountTiers } = require('../utils/pricing');
 
-async function create({ galleryId, clientToken, clientName, clientEmail, clientPhone, photoIds, pricePerPhoto }) {
-  const totalAmount = (pricePerPhoto || 0) * photoIds.length;
+async function create({
+  galleryId,
+  clientToken,
+  clientName,
+  clientEmail,
+  clientPhone,
+  photoIds,
+  pricePerPhoto,
+  discountTiers,
+}) {
+  const quote = quotePhotoOrder(pricePerPhoto, photoIds.length, parseDiscountTiers(discountTiers));
+  const itemPrice = photoIds.length
+    ? Math.round((quote.total / photoIds.length) * 100) / 100
+    : 0;
 
   const [result] = await pool.query(
-    `INSERT INTO orders (gallery_id, client_token, client_name, client_email, client_phone, photo_count, total_amount)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [galleryId, clientToken, clientName, clientEmail, clientPhone || null, photoIds.length, totalAmount]
+    `INSERT INTO orders
+      (gallery_id, client_token, client_name, client_email, client_phone, photo_count, total_amount, discount_percent)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [galleryId, clientToken, clientName, clientEmail, clientPhone || null, photoIds.length, quote.total, quote.percent]
   );
 
   const orderId = result.insertId;
   for (const photoId of photoIds) {
     await pool.query(
       'INSERT INTO order_items (order_id, photo_id, price) VALUES (?, ?, ?)',
-      [orderId, photoId, pricePerPhoto || 0]
+      [orderId, photoId, itemPrice]
     );
   }
 
@@ -50,6 +64,24 @@ async function updateStatus(id, status) {
   return findById(id);
 }
 
+async function deleteById(id) {
+  await pool.query('DELETE FROM orders WHERE id = ?', [id]);
+}
+
+async function deleteCancelledOlderThan(adminId, days) {
+  const safeDays = parseInt(days, 10);
+  if (!safeDays || safeDays < 1) return 0;
+  const [result] = await pool.query(
+    `DELETE o FROM orders o
+     JOIN galleries g ON g.id = o.gallery_id
+     WHERE g.admin_id = ?
+       AND o.status = 'cancelled'
+       AND o.created_at < DATE_SUB(NOW(), INTERVAL ? DAY)`,
+    [Number(adminId), safeDays]
+  );
+  return result.affectedRows || 0;
+}
+
 async function findItemsByOrderIds(orderIds) {
   if (!orderIds.length) return [];
   const placeholders = orderIds.map(() => '?').join(',');
@@ -64,4 +96,13 @@ async function findItemsByOrderIds(orderIds) {
   return rows;
 }
 
-module.exports = { create, findById, findByGallery, findByAdmin, updateStatus, findItemsByOrderIds };
+module.exports = {
+  create,
+  findById,
+  findByGallery,
+  findByAdmin,
+  updateStatus,
+  deleteById,
+  deleteCancelledOlderThan,
+  findItemsByOrderIds,
+};

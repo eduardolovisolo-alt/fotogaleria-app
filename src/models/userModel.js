@@ -6,11 +6,20 @@ async function findByEmail(email) {
 }
 
 async function findById(id) {
-  const [rows] = await pool.query(
-    'SELECT id, name, email, role, created_at FROM users WHERE id = ? LIMIT 1',
-    [id]
-  );
-  return rows[0] || null;
+  try {
+    const [rows] = await pool.query(
+      'SELECT id, name, email, role, order_auto_delete_days, created_at FROM users WHERE id = ? LIMIT 1',
+      [id]
+    );
+    return rows[0] || null;
+  } catch (err) {
+    if (err.code !== 'ER_BAD_FIELD_ERROR') throw err;
+    const [rows] = await pool.query(
+      'SELECT id, name, email, role, created_at FROM users WHERE id = ? LIMIT 1',
+      [id]
+    );
+    return rows[0] || null;
+  }
 }
 
 async function anyAdminExists() {
@@ -55,6 +64,12 @@ async function resetPassword(userId, passwordHash) {
   );
 }
 
+async function updateOrderAutoDeleteDays(userId, days) {
+  const value = days === null || days === undefined || days === '' ? null : Math.max(0, parseInt(days, 10) || 0);
+  await pool.query('UPDATE users SET order_auto_delete_days = ? WHERE id = ?', [value || null, userId]);
+  return findById(userId);
+}
+
 module.exports = {
   findByEmail,
   findById,
@@ -64,4 +79,5 @@ module.exports = {
   setResetToken,
   findByValidResetToken,
   resetPassword,
+  updateOrderAutoDeleteDays,
 };

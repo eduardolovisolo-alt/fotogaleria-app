@@ -6,13 +6,14 @@ const orderModel = require('../models/orderModel');
 const { signToken } = require('../utils/jwt');
 const { uniqueSlug } = require('../utils/slug');
 const { sameId } = require('../utils/ids');
+const { normalizeDiscountTiers, parseDiscountTiers } = require('../utils/pricing');
 const { r2, BUCKET_NAME } = require('../config/r2');
 const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { withSignedUrls } = require('./photoController');
 
 async function createGallery(req, res) {
   try {
-    const { name, isPublic = true, password, accessUsername, pricePerPhoto } = req.body;
+    const { name, isPublic = true, password, accessUsername, pricePerPhoto, author, applyWatermark, discountTiers } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'El nombre de la galería es obligatorio.' });
@@ -38,6 +39,9 @@ async function createGallery(req, res) {
       passwordHash,
       accessUsername: !isPublic ? String(accessUsername).trim() : null,
       pricePerPhoto: pricePerPhoto ? Number(pricePerPhoto) : null,
+      author: author ? String(author).trim().slice(0, 150) : null,
+      applyWatermark: applyWatermark !== false,
+      discountTiers: normalizeDiscountTiers(discountTiers),
     });
 
     res.status(201).json({ gallery: toSafeGallery(gallery) });
@@ -96,6 +100,7 @@ async function listCatalog(req, res) {
         name: gallery.name,
         slug: gallery.slug,
         isPublic: !!gallery.is_public,
+        author: gallery.author || '',
         coverUrl,
         photoCount: photos.length,
       };
@@ -117,7 +122,9 @@ async function getGalleryInfo(req, res) {
       slug: gallery.slug,
       isPublic: !!gallery.is_public,
       locked,
+      author: gallery.author || '',
       pricePerPhoto: gallery.price_per_photo,
+      discountTiers: parseDiscountTiers(gallery.discount_tiers),
     },
   });
 }
@@ -161,7 +168,18 @@ async function updateGallery(req, res) {
       return res.status(404).json({ error: 'Galería no encontrada.' });
     }
 
-    const { name, isPublic, password, accessUsername, coverPhotoId, clearPassword, pricePerPhoto } = req.body;
+    const {
+      name,
+      isPublic,
+      password,
+      accessUsername,
+      coverPhotoId,
+      clearPassword,
+      pricePerPhoto,
+      author,
+      applyWatermark,
+      discountTiers,
+    } = req.body;
     let passwordHash;
 
     if (isPublic === false && password) {
@@ -198,6 +216,9 @@ async function updateGallery(req, res) {
         : (accessUsername !== undefined ? String(accessUsername).trim() : undefined),
       coverPhotoId,
       pricePerPhoto: pricePerPhoto !== undefined ? (pricePerPhoto ? Number(pricePerPhoto) : null) : undefined,
+      author: author !== undefined ? String(author || '').trim().slice(0, 150) : undefined,
+      applyWatermark,
+      discountTiers: discountTiers !== undefined ? normalizeDiscountTiers(discountTiers) : undefined,
     });
 
     res.json({ gallery: toSafeGallery(updated) });
@@ -252,6 +273,9 @@ function toSafeGallery(gallery) {
     accessUsername: gallery.access_username || '',
     coverPhotoId: gallery.cover_photo_id || null,
     pricePerPhoto: gallery.price_per_photo,
+    author: gallery.author || '',
+    applyWatermark: gallery.apply_watermark !== 0,
+    discountTiers: parseDiscountTiers(gallery.discount_tiers),
     createdAt: gallery.created_at,
   };
 }

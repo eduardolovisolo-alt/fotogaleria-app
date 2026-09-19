@@ -21,20 +21,39 @@
     <div class="page-header">
       <h1>Pedidos</h1>
     </div>
-    <p class="subtitle" style="margin-top:-12px; margin-bottom:22px;">Los clientes confirman por WhatsApp. Acá queda el registro para marcar pagado o cancelado y responderles.</p>
+    <p class="subtitle" style="margin-top:-12px; margin-bottom:18px;">Lista central de todos los pedidos. En cada galería solo se ve la cantidad.</p>
+
+    <details class="settings-fold">
+      <summary>Limpieza automática</summary>
+      <p class="subtitle" style="margin-top:0;">Solo se borran pedidos <strong>cancelados</strong> después de X días. Pendiente, pagado y enviado no se tocan. También podés borrar uno con el tachito.</p>
+      <div class="field">
+        <label for="auto-delete-days">Eliminar cancelados después de</label>
+        <select id="auto-delete-days">
+          <option value="0">Nunca</option>
+          <option value="7">7 días</option>
+          <option value="15">15 días</option>
+          <option value="30">30 días</option>
+          <option value="60">60 días</option>
+          <option value="90">90 días</option>
+        </select>
+      </div>
+      <button type="button" class="secondary" id="save-order-settings" style="margin-top:12px;">Guardar</button>
+      <div id="settings-message" class="message"></div>
+    </details>
 
     <div class="order-stats" id="order-stats"></div>
     <div class="filter-row" id="filter-row">
       <button type="button" class="filter-chip active" data-filter="all">Todos</button>
       <button type="button" class="filter-chip" data-filter="pending">Pendientes</button>
       <button type="button" class="filter-chip" data-filter="paid">Pagados</button>
+      <button type="button" class="filter-chip" data-filter="shipped">Enviados</button>
       <button type="button" class="filter-chip" data-filter="cancelled">Cancelados</button>
     </div>
 
     <div id="orders-box" class="empty-state">Cargando...</div>
   </main>
 
-  <script src="assets/js/api.js?v=20260919"></script>
+  <script src="assets/js/api.js?v=20260919-ux"></script>
   <script>
     const session = getSession();
     if (!session) window.location.href = 'login.html';
@@ -45,7 +64,13 @@
       window.location.href = 'index.html';
     });
 
-    const STATUS_LABELS = { pending: 'Pendiente', paid: 'Pagado', cancelled: 'Cancelado' };
+    const STATUS_LABELS = {
+      pending: 'Pendiente',
+      paid: 'Pagado',
+      shipped: 'Enviado',
+      cancelled: 'Cancelado',
+    };
+    const pageSlug = new URLSearchParams(window.location.search).get('slug') || '';
     let allOrders = [];
     let currentFilter = 'all';
 
@@ -55,6 +80,11 @@
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
+    }
+
+    function showMessage(el, text, type) {
+      el.textContent = text;
+      el.className = `message show ${type}`;
     }
 
     function renderStats(orders) {
@@ -69,15 +99,30 @@
       `;
     }
 
+    function statusSelect(order) {
+      return `
+        <select data-id="${order.id}" class="order-status" onclick="event.stopPropagation()">
+          ${Object.entries(STATUS_LABELS).map(([value, label]) => `
+            <option value="${value}" ${order.status === value ? 'selected' : ''}>${label}</option>
+          `).join('')}
+        </select>
+      `;
+    }
+
     function renderOrders() {
       const box = document.getElementById('orders-box');
+      const scoped = pageSlug
+        ? allOrders.filter((o) => o.gallery_slug === pageSlug)
+        : allOrders;
       const orders = currentFilter === 'all'
-        ? allOrders
-        : allOrders.filter((o) => o.status === currentFilter);
+        ? scoped
+        : scoped.filter((o) => o.status === currentFilter);
 
-      if (!allOrders.length) {
+      if (!scoped.length) {
         box.className = 'empty-state';
-        box.textContent = 'Todavía no recibiste pedidos. Cuando un cliente confirme, te escribe por WhatsApp y el pedido aparece acá.';
+        box.textContent = pageSlug
+          ? 'Esta galería todavía no tiene pedidos.'
+          : 'Todavía no recibiste pedidos. Cuando un cliente confirme, aparece acá.';
         return;
       }
       if (!orders.length) {
@@ -88,38 +133,48 @@
 
       box.className = '';
       try {
-      box.innerHTML = orders.map((o) => {
-        const replyUrl = typeof buildPhotographerReplyWhatsAppUrl === 'function'
-          ? buildPhotographerReplyWhatsAppUrl(o, o.gallery_name)
-          : '';
-        const photos = (o.items || []).map((item) => item.fileName).filter(Boolean);
-        return `
-          <article class="order-card">
-            <div class="order-card-top">
-              <div>
-                <h3>${escapeHtml(o.client_name)} <span class="badge ${o.status}">${STATUS_LABELS[o.status] || o.status}</span></h3>
-                <p class="meta">Pedido #${o.id} · ${escapeHtml(o.gallery_name)} · ${new Date(o.created_at).toLocaleString('es-AR')}</p>
+        box.innerHTML = orders.map((o) => {
+          const replyUrl = typeof buildPhotographerReplyWhatsAppUrl === 'function'
+            ? buildPhotographerReplyWhatsAppUrl(o, o.gallery_name)
+            : '';
+          const photos = (o.items || []).map((item) => item.fileName).filter(Boolean);
+          const discount = Number(o.discount_percent) > 0 ? ` · ${Number(o.discount_percent)}% off` : '';
+          return `
+            <details class="order-line">
+              <summary>
+                <div class="order-line-main">
+                  <strong>${escapeHtml(o.client_name)}</strong>
+                  <span>#${o.id} · ${escapeHtml(o.gallery_name)} · ${o.photo_count} foto(s)</span>
+                </div>
+                <span class="badge ${o.status}">${STATUS_LABELS[o.status] || o.status}</span>
+                <span>${Number(o.total_amount) ? `$${Number(o.total_amount).toLocaleString('es-AR')}` : '—'}</span>
+                ${statusSelect(o)}
+                <button type="button" class="icon-btn" data-delete="${o.id}" title="Eliminar pedido" onclick="event.preventDefault(); event.stopPropagation();">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M8 6V4h8v2m-1 0v14H9V6"/>
+                  </svg>
+                </button>
+              </summary>
+              <div class="order-line-body">
+                <p class="meta">${new Date(o.created_at).toLocaleString('es-AR')}</p>
                 <p class="meta">${escapeHtml(o.client_email)}${o.client_phone ? ` · ${escapeHtml(o.client_phone)}` : ''}</p>
-                <p class="meta">${o.photo_count} foto(s)${Number(o.total_amount) ? ` · $${Number(o.total_amount).toLocaleString('es-AR')}` : ''}</p>
+                <p class="meta">${o.photo_count} foto(s)${Number(o.total_amount) ? ` · $${Number(o.total_amount).toLocaleString('es-AR')}` : ''}${discount}</p>
+                <div class="gallery-row-actions" style="margin-top:12px;">
+                  ${replyUrl ? `<a class="wa-btn wa-btn-sm" href="${replyUrl}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ''}
+                  <a class="secondary" href="admin-gallery.html?slug=${encodeURIComponent(o.gallery_slug)}">Ver galería</a>
+                </div>
+                ${photos.length ? `<ul class="order-photos">${photos.map((name) => `<li>${escapeHtml(name)}</li>`).join('')}</ul>` : ''}
               </div>
-              <div class="gallery-row-actions">
-                ${replyUrl ? `<a class="wa-btn wa-btn-sm" href="${replyUrl}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ''}
-                <a class="secondary" href="admin-gallery.html?slug=${encodeURIComponent(o.gallery_slug)}">Ver galería</a>
-                <select data-id="${o.id}" class="order-status">
-                  <option value="pending" ${o.status === 'pending' ? 'selected' : ''}>Pendiente</option>
-                  <option value="paid" ${o.status === 'paid' ? 'selected' : ''}>Pagado</option>
-                  <option value="cancelled" ${o.status === 'cancelled' ? 'selected' : ''}>Cancelado</option>
-                </select>
-              </div>
-            </div>
-            ${photos.length ? `<ul class="order-photos">${photos.map((name) => `<li>${escapeHtml(name)}</li>`).join('')}</ul>` : ''}
-          </article>
-        `;
-      }).join('');
+            </details>
+          `;
+        }).join('');
 
-      box.querySelectorAll('.order-status').forEach((select) => {
-        select.addEventListener('change', () => updateOrderStatus(select.dataset.id, select.value));
-      });
+        box.querySelectorAll('.order-status').forEach((select) => {
+          select.addEventListener('change', () => updateOrderStatus(select.dataset.id, select.value));
+        });
+        box.querySelectorAll('[data-delete]').forEach((btn) => {
+          btn.addEventListener('click', () => deleteOrder(btn.dataset.delete));
+        });
       } catch (err) {
         box.className = 'empty-state';
         box.textContent = err.message || 'No se pudieron mostrar los pedidos.';
@@ -135,9 +190,12 @@
           return;
         }
 
-        const { orders } = await apiRequest('/api/orders', { token: session.token });
+        const { orders, settings } = await apiRequest('/api/orders', { token: session.token });
         allOrders = orders;
-        renderStats(orders);
+        if (settings && document.getElementById('auto-delete-days')) {
+          document.getElementById('auto-delete-days').value = String(settings.cancelAutoDeleteDays || 0);
+        }
+        renderStats(pageSlug ? orders.filter((o) => o.gallery_slug === pageSlug) : orders);
         renderOrders();
       } catch (err) {
         box.className = 'empty-state';
@@ -158,6 +216,31 @@
         loadOrders();
       }
     }
+
+    async function deleteOrder(orderId) {
+      if (!confirm(`¿Eliminar el pedido #${orderId}? Esta acción no se puede deshacer.`)) return;
+      try {
+        await apiRequest(`/api/orders/${orderId}`, { method: 'DELETE', token: session.token });
+        await loadOrders();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    document.getElementById('save-order-settings').addEventListener('click', async () => {
+      const days = Number(document.getElementById('auto-delete-days').value) || 0;
+      try {
+        await apiRequest('/api/orders/settings', {
+          method: 'PUT',
+          token: session.token,
+          body: { cancelAutoDeleteDays: days },
+        });
+        showMessage(document.getElementById('settings-message'), 'Configuración guardada.', 'success');
+        await loadOrders();
+      } catch (err) {
+        showMessage(document.getElementById('settings-message'), err.message, 'error');
+      }
+    });
 
     document.getElementById('filter-row').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-filter]');

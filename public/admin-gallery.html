@@ -11,7 +11,7 @@
     <a class="brand" href="admin.html">Foto<span>Galería</span> Pro</a>
     <nav>
       <a href="admin.html">Galerías</a>
-      <a href="#marca-de-agua">Marca de agua</a>
+      <a href="admin.html#marca-de-agua">Marca de agua</a>
       <a href="admin-orders.html">Pedidos</a>
       <a href="admin-messages.html">Mensajes</a>
       <a href="#" id="logout-link">Cerrar sesión</a>
@@ -23,7 +23,7 @@
     <div class="page-header">
       <h1 id="gallery-name">Cargando...</h1>
       <span class="badge" id="gallery-badge"></span>
-      <a href="admin-orders.html" class="secondary" style="margin-left:auto;">Ver todos los pedidos</a>
+      <a id="orders-header-link" href="admin-orders.html" class="secondary" style="margin-left:auto;">Ver pedidos</a>
     </div>
 
     <div class="share-box">
@@ -31,10 +31,14 @@
       <button class="secondary" id="copy-link-btn">Copiar</button>
     </div>
 
-    <div class="create-panel">
-      <h2>Configuración de acceso</h2>
+    <details class="settings-fold">
+      <summary>Configuración de acceso y precios</summary>
       <div id="settings-message" class="message"></div>
-      <div class="inline-fields">
+      <div class="field">
+        <label for="settings-author">Autor de las fotos</label>
+        <input type="text" id="settings-author" maxlength="150" placeholder="Nombre del fotógrafo" />
+      </div>
+      <div class="inline-fields" style="margin-top:14px;">
         <label class="checkbox-field">
           <input type="checkbox" id="settings-public" />
           Galería pública (sin contraseña)
@@ -54,61 +58,29 @@
         <label for="settings-price">Precio por foto (dejar vacío si no vendés fotos)</label>
         <input type="number" id="settings-price" min="0" step="0.01" placeholder="Ej: 1500" />
       </div>
-      <button class="secondary" id="save-settings-btn" style="margin-top:10px;">Guardar cambios</button>
-    </div>
-
-    <div class="create-panel" id="marca-de-agua">
-      <h2>Marca de agua</h2>
-      <p class="subtitle" style="margin-top:-6px;">Elegí texto, logo, patrón, diseño y textura. Se aplica a miniaturas y vistas previas; las originales quedan limpias.</p>
-      <div id="watermark-message" class="message"></div>
-      <form id="watermark-form">
+      <p class="subtitle" style="margin:16px 0 0;">Descuento por cantidad</p>
+      <div class="discount-row">
         <div class="field">
-          <label for="wm-text">Texto</label>
-          <input type="text" id="wm-text" maxlength="48" placeholder="FotoGalería Pro" />
+          <label for="discount-min-1">A partir de (fotos)</label>
+          <input type="number" id="discount-min-1" min="2" step="1" placeholder="Ej: 5" />
         </div>
-        <div class="inline-fields" style="margin-top:14px;">
-          <div class="field">
-            <label for="wm-design">Diseño</label>
-            <select id="wm-design">
-              <option value="text">Solo texto</option>
-              <option value="logo">Solo logo</option>
-              <option value="both">Logo + texto</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="wm-pattern">Patrón</label>
-            <select id="wm-pattern">
-              <option value="diagonal">Diagonal</option>
-              <option value="tile">Mosaico</option>
-              <option value="center">Al centro</option>
-              <option value="corners">En las esquinas</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="wm-texture">Textura</label>
-            <select id="wm-texture">
-              <option value="soft">Suave</option>
-              <option value="strong">Marcada</option>
-              <option value="outline">Contorno</option>
-            </select>
-          </div>
+        <div class="field">
+          <label for="discount-pct-1">Descuento %</label>
+          <input type="number" id="discount-pct-1" min="1" max="80" step="1" placeholder="Ej: 10" />
         </div>
-        <div class="field" style="margin-top:14px;">
-          <label for="wm-logo">Subir logo / sello (PNG o WEBP)</label>
-          <input type="file" id="wm-logo" accept="image/png,image/webp,image/jpeg" />
-          <label class="checkbox-field" style="margin-top:8px;">
-            <input type="checkbox" id="wm-clear-logo" />
-            Quitar logo actual
-          </label>
+      </div>
+      <div class="discount-row">
+        <div class="field">
+          <label for="discount-min-2">A partir de (fotos)</label>
+          <input type="number" id="discount-min-2" min="2" step="1" placeholder="Ej: 10" />
         </div>
-        <div class="watermark-preview-wrap">
-          <img id="wm-preview" alt="Vista previa de la marca de agua" />
+        <div class="field">
+          <label for="discount-pct-2">Descuento %</label>
+          <input type="number" id="discount-pct-2" min="1" max="80" step="1" placeholder="Ej: 20" />
         </div>
-        <div style="margin-top:16px;">
-          <button type="submit" class="primary" id="wm-save-btn" style="width:auto; padding:11px 24px;">Guardar marca de agua</button>
-        </div>
-      </form>
-    </div>
+      </div>
+      <button class="secondary" id="save-settings-btn" style="margin-top:16px;">Guardar cambios</button>
+    </details>
 
     <div class="upload-box">
       <form id="upload-form">
@@ -118,7 +90,10 @@
         <div class="upload-actions">
           <button type="button" class="primary" id="upload-btn">Subir fotos</button>
           <button type="button" class="secondary" id="folder-btn">Subir carpeta</button>
-          <button type="button" class="secondary" id="reprocess-btn">Aplicar marca de agua</button>
+          <label class="checkbox-field" style="margin:0;">
+            <input type="checkbox" id="apply-watermark" />
+            Aplicar marca de agua
+          </label>
         </div>
       </form>
       <div id="upload-progress" class="upload-progress" style="display:none;">
@@ -135,12 +110,11 @@
     <p class="gallery-title">Selecciones de clientes</p>
     <div id="selections-box" class="empty-state">Cargando...</div>
 
-    <p class="gallery-title" id="pedidos">Pedidos de esta galería</p>
-    <div id="orders-box" class="empty-state">Cargando...</div>
+    <p class="gallery-title" id="pedidos">Pedidos</p>
+    <p class="orders-summary-link" id="orders-box">Cargando...</p>
   </main>
 
-  <script src="assets/js/api.js?v=20260919-wm"></script>
-  <script src="assets/js/watermark-admin.js?v=20260919-wm"></script>
+  <script src="assets/js/api.js?v=20260919-ux"></script>
   <script>
     const session = getSession();
     if (!session) window.location.href = 'login.html';
@@ -181,7 +155,22 @@
       document.getElementById('settings-public').checked = gallery.isPublic;
       document.getElementById('settings-private-fields').style.display = gallery.isPublic ? 'none' : 'block';
       document.getElementById('settings-username').value = gallery.accessUsername || '';
+      document.getElementById('settings-author').value = gallery.author || '';
       document.getElementById('settings-price').value = gallery.pricePerPhoto || '';
+      document.getElementById('apply-watermark').checked = gallery.applyWatermark !== false;
+      document.getElementById('orders-header-link').href = `admin-orders.html?slug=${encodeURIComponent(gallery.slug)}`;
+      const tiers = gallery.discountTiers || [];
+      document.getElementById('discount-min-1').value = tiers[0]?.min || '';
+      document.getElementById('discount-pct-1').value = tiers[0]?.percent || '';
+      document.getElementById('discount-min-2').value = tiers[1]?.min || '';
+      document.getElementById('discount-pct-2').value = tiers[1]?.percent || '';
+    }
+
+    function readDiscountTiers() {
+      return [
+        { min: document.getElementById('discount-min-1').value, percent: document.getElementById('discount-pct-1').value },
+        { min: document.getElementById('discount-min-2').value, percent: document.getElementById('discount-pct-2').value },
+      ];
     }
 
     document.getElementById('copy-link-btn').addEventListener('click', () => {
@@ -202,13 +191,21 @@
       const isPublic = document.getElementById('settings-public').checked;
       const password = document.getElementById('settings-password').value;
       const accessUsername = document.getElementById('settings-username').value.trim();
+      const author = document.getElementById('settings-author').value.trim();
       const pricePerPhoto = document.getElementById('settings-price').value;
 
       try {
         await apiRequest(`/api/galleries/${currentGallery.id}`, {
           method: 'PUT',
           token: session.token,
-          body: { isPublic, password: password || undefined, accessUsername, pricePerPhoto },
+          body: {
+            isPublic,
+            password: password || undefined,
+            accessUsername,
+            author,
+            pricePerPhoto,
+            discountTiers: readDiscountTiers(),
+          },
         });
         showMessage(messageEl, 'Configuración guardada.', 'success');
         document.getElementById('settings-password').value = '';
@@ -299,23 +296,28 @@
     document.getElementById('upload-btn').addEventListener('click', () => openPicker(photoInput));
     document.getElementById('folder-btn').addEventListener('click', () => openPicker(folderInput));
     photoInput.addEventListener('change', () => uploadFiles(photoInput.files));
-    document.getElementById('reprocess-btn').addEventListener('click', async () => {
-      const btn = document.getElementById('reprocess-btn');
-      btn.disabled = true;
-      btn.textContent = 'Aplicando...';
+    document.getElementById('apply-watermark').addEventListener('change', async (e) => {
+      const apply = e.target.checked;
       try {
-        const data = await apiRequest(`${galleryApi}/reprocess-watermark`, {
-          method: 'POST',
+        await apiRequest(`/api/galleries/${currentGallery.id}`, {
+          method: 'PUT',
           token: session.token,
+          body: { applyWatermark: apply },
         });
-        const type = data.failed ? 'error' : 'success';
-        showMessage(uploadMessage, data.message || 'Marca de agua aplicada.', type);
-        loadPhotos();
+        currentGallery.applyWatermark = apply;
+        if (apply) {
+          const data = await apiRequest(`${galleryApi}/reprocess-watermark`, {
+            method: 'POST',
+            token: session.token,
+          });
+          showMessage(uploadMessage, data.message || 'Marca de agua aplicada a las fotos.', data.failed ? 'error' : 'success');
+          loadPhotos();
+        } else {
+          showMessage(uploadMessage, 'Las fotos nuevas se suben sin marca. Las ya marcadas no se limpian.', 'success');
+        }
       } catch (err) {
+        e.target.checked = !apply;
         showMessage(uploadMessage, err.message, 'error');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Aplicar marca de agua';
       }
     });
     folderInput.addEventListener('change', () => uploadFiles(folderInput.files));
@@ -427,66 +429,19 @@
       }
     }
 
-    // --- Pedidos ---
-    const STATUS_LABELS = { pending: 'Pendiente', paid: 'Pagado', cancelled: 'Cancelado' };
-
     async function loadOrders() {
       const box = document.getElementById('orders-box');
+      const href = `admin-orders.html?slug=${encodeURIComponent(slug)}`;
       try {
         const { orders } = await apiRequest(`${galleryApi}/admin-orders`, { token: session.token });
-        if (!orders.length) {
-          box.className = 'empty-state';
-          box.innerHTML = 'Todavía no hay pedidos en esta galería. Cuando un cliente confirme, aparecen acá y en <a href="admin-orders.html">Pedidos</a>.';
-          return;
-        }
-        box.className = '';
-        box.innerHTML = orders.map((o) => {
-          const replyUrl = typeof buildPhotographerReplyWhatsAppUrl === 'function'
-            ? buildPhotographerReplyWhatsAppUrl(o, currentGallery.name)
-            : '';
-          const photos = (o.items || []).map((item) => item.fileName).filter(Boolean);
-          return `
-          <article class="order-card">
-            <div class="order-card-top">
-              <div>
-                <h3>${o.client_name} <span class="badge ${o.status}">${STATUS_LABELS[o.status] || o.status}</span></h3>
-                <p class="meta">Pedido #${o.id} · ${new Date(o.created_at).toLocaleString('es-AR')}</p>
-                <p class="meta">${o.client_email}${o.client_phone ? ` · ${o.client_phone}` : ''}</p>
-                <p class="meta">${o.photo_count} foto(s)${Number(o.total_amount) ? ` · $${Number(o.total_amount).toLocaleString('es-AR')}` : ''}</p>
-              </div>
-              <div class="gallery-row-actions">
-                ${replyUrl ? `<a class="wa-btn wa-btn-sm" href="${replyUrl}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ''}
-                <select data-id="${o.id}" class="order-status">
-                  <option value="pending" ${o.status === 'pending' ? 'selected' : ''}>Pendiente</option>
-                  <option value="paid" ${o.status === 'paid' ? 'selected' : ''}>Pagado</option>
-                  <option value="cancelled" ${o.status === 'cancelled' ? 'selected' : ''}>Cancelado</option>
-                </select>
-              </div>
-            </div>
-            ${photos.length ? `<ul class="order-photos">${photos.map((name) => `<li>${name}</li>`).join('')}</ul>` : ''}
-          </article>
-        `;
-        }).join('');
-
-        box.querySelectorAll('.order-status').forEach((select) => {
-          select.addEventListener('change', () => updateOrderStatus(select.dataset.id, select.value));
-        });
+        const count = orders.length;
+        box.className = 'orders-summary-link';
+        box.innerHTML = count
+          ? `<a href="${href}">${count} pedido${count === 1 ? '' : 's'} de esta galería</a> — la lista completa está en Pedidos.`
+          : `Todavía no hay pedidos. Cuando un cliente confirme, aparecen en <a href="${href}">Pedidos</a>.`;
       } catch (err) {
-        box.className = 'empty-state';
+        box.className = 'orders-summary-link';
         box.textContent = err.message || 'No se pudieron cargar los pedidos.';
-      }
-    }
-
-    async function updateOrderStatus(orderId, status) {
-      try {
-        await apiRequest(`/api/orders/${orderId}`, {
-          method: 'PUT',
-          token: session.token,
-          body: { status },
-        });
-      } catch (err) {
-        alert(err.message);
-        loadOrders();
       }
     }
 
@@ -495,7 +450,6 @@
       loadPhotos();
       loadSelections();
       loadOrders();
-      bindWatermarkAdmin(session);
     })();
   </script>
 </body>

@@ -31,6 +31,10 @@
           <label for="gallery-name">Nombre</label>
           <input type="text" id="gallery-name" required placeholder="Ej: Boda Sofía y Juan" />
         </div>
+        <div class="field" style="margin-top:14px;">
+          <label for="gallery-author">Autor de las fotos</label>
+          <input type="text" id="gallery-author" maxlength="150" placeholder="Ej: Patricio Lovisolo" />
+        </div>
         <div class="inline-fields">
           <label class="checkbox-field">
             <input type="checkbox" id="gallery-public" checked />
@@ -59,7 +63,7 @@
 
     <div class="create-panel" id="marca-de-agua">
       <h2>Marca de agua</h2>
-      <p class="subtitle" style="margin-top:-6px;">Se aplica a las miniaturas y vistas previas que ven los clientes. Las originales quedan limpias para vos.</p>
+      <p class="subtitle" style="margin-top:-6px;">Configuración general. En cada galería solo elegís si se aplica o no. Las originales quedan limpias.</p>
       <div id="watermark-message" class="message"></div>
       <form id="watermark-form">
         <div class="field">
@@ -115,7 +119,7 @@
     <p class="empty-state" id="empty-state" style="display:none;">Todavía no creaste ninguna galería.</p>
   </main>
 
-  <script src="assets/js/api.js?v=20260919"></script>
+  <script src="assets/js/api.js?v=20260919-ux"></script>
   <script src="assets/js/watermark-admin.js?v=20260919-wm"></script>
   <script>
     const session = getSession();
@@ -166,13 +170,14 @@
             <h3>${g.name}</h3>
             <div class="meta">
               <span class="badge ${g.isPublic ? 'public' : 'private'}">${g.isPublic ? 'Pública' : 'Privada'}</span>
+              ${g.author ? `<span>${g.author}</span>` : ''}
               <span>${g.photoCount} foto${g.photoCount === 1 ? '' : 's'}</span>
               <span>${g.orderCount || 0} pedido${g.orderCount === 1 ? '' : 's'}</span>
               ${g.pricePerPhoto ? `<span>$${Number(g.pricePerPhoto).toLocaleString('es-AR')} / foto</span>` : ''}
             </div>
           </div>
           <div class="gallery-row-actions">
-            <a class="secondary" href="admin-gallery.html?slug=${encodeURIComponent(g.slug)}#pedidos">Pedidos</a>
+            <a class="secondary" href="admin-orders.html?slug=${encodeURIComponent(g.slug)}">Pedidos</a>
             <a class="secondary" href="admin-gallery.html?slug=${encodeURIComponent(g.slug)}">Administrar</a>
             <button class="secondary" data-id="${g.id}" data-action="delete">Eliminar</button>
           </div>
@@ -213,6 +218,7 @@
 
       try {
         const name = document.getElementById('gallery-name').value.trim();
+        const author = document.getElementById('gallery-author').value.trim();
         const isPublic = publicCheckbox.checked;
         const password = document.getElementById('gallery-password').value;
         const accessUsername = document.getElementById('gallery-username').value.trim();
@@ -221,7 +227,7 @@
         await apiRequest('/api/galleries', {
           method: 'POST',
           token: session.token,
-          body: { name, isPublic, password, accessUsername, pricePerPhoto },
+          body: { name, author, isPublic, password, accessUsername, pricePerPhoto },
         });
 
         document.getElementById('create-form').reset();
