@@ -9,6 +9,9 @@
 <body>
   <header class="topbar">
     <a class="brand" href="index.html">Foto<span>Galería</span> Pro</a>
+    <nav>
+      <a href="index.html">← Volver a galerías</a>
+    </nav>
   </header>
 
   <div id="lock-view" class="lock-screen" style="display:none;">
@@ -26,12 +29,14 @@
           <input type="password" id="gallery-password" required autocomplete="current-password" />
         </div>
         <button type="submit" class="primary">Entrar</button>
+        <a href="index.html" class="secondary" style="display:block; text-align:center; margin-top:12px;">Volver a galerías</a>
       </form>
     </div>
   </div>
 
   <main id="gallery-view" class="client-page" style="display:none;">
     <div class="client-header">
+      <a href="index.html" class="back-link">← Volver a galerías</a>
       <h1 id="gallery-name">Cargando...</h1>
       <p>Elegí tus fotos favoritas tocándolas</p>
     </div>
@@ -45,17 +50,19 @@
     <button class="primary" id="continue-btn">Continuar al pedido</button>
   </div>
 
-  <div id="lightbox" class="lightbox" style="display:none;">
-    <button class="lightbox-close" id="lightbox-close" aria-label="Cerrar">✕</button>
-    <button class="lightbox-nav lightbox-prev" id="lightbox-prev" aria-label="Anterior">‹</button>
-    <button class="lightbox-nav lightbox-next" id="lightbox-next" aria-label="Siguiente">›</button>
+  <div id="lightbox" class="lightbox" hidden>
+    <button class="lightbox-close" id="lightbox-close" type="button">Cerrar</button>
+    <button class="lightbox-nav lightbox-prev" id="lightbox-prev" type="button" aria-label="Anterior">‹</button>
     <div class="lightbox-content">
       <div class="lightbox-img-wrap">
         <img id="lightbox-img" class="protected-photo" src="" alt="" draggable="false" />
         <div class="img-shield"></div>
       </div>
-      <button class="lightbox-select" id="lightbox-select">Seleccionar</button>
+      <div class="lightbox-actions">
+        <button class="lightbox-select" id="lightbox-select" type="button">Seleccionar</button>
+      </div>
     </div>
+    <button class="lightbox-nav lightbox-next" id="lightbox-next" type="button" aria-label="Siguiente">›</button>
   </div>
 
   <script src="assets/js/api.js"></script>
@@ -163,12 +170,12 @@
     function openLightbox(index) {
       currentLightboxIndex = index;
       renderLightbox();
-      lightboxEl.style.display = 'flex';
+      lightboxEl.hidden = false;
       document.body.style.overflow = 'hidden';
     }
 
     function closeLightbox() {
-      lightboxEl.style.display = 'none';
+      lightboxEl.hidden = true;
       document.body.style.overflow = '';
     }
 
@@ -204,11 +211,20 @@
     });
 
     document.addEventListener('keydown', (e) => {
-      if (lightboxEl.style.display === 'none') return;
+      if (lightboxEl.hidden) return;
       if (e.key === 'Escape') closeLightbox();
       if (e.key === 'ArrowLeft') lightboxStep(-1);
       if (e.key === 'ArrowRight') lightboxStep(1);
     });
+
+    let swipeStartX = 0;
+    lightboxEl.addEventListener('touchstart', (e) => {
+      swipeStartX = e.changedTouches[0].clientX;
+    }, { passive: true });
+    lightboxEl.addEventListener('touchend', (e) => {
+      const dx = e.changedTouches[0].clientX - swipeStartX;
+      if (Math.abs(dx) > 40) lightboxStep(dx < 0 ? 1 : -1);
+    }, { passive: true });
 
     async function loadSelections() {
       try {

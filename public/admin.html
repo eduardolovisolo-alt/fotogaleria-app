@@ -56,6 +56,59 @@
       </form>
     </div>
 
+    <div class="create-panel">
+      <h2>Marca de agua</h2>
+      <p class="subtitle" style="margin-top:-6px;">Se aplica a las miniaturas y vistas previas que ven los clientes. Las originales quedan limpias para vos.</p>
+      <div id="watermark-message" class="message"></div>
+      <form id="watermark-form">
+        <div class="field">
+          <label for="wm-text">Texto</label>
+          <input type="text" id="wm-text" maxlength="48" placeholder="FotoGalería Pro" />
+        </div>
+        <div class="inline-fields" style="margin-top:14px;">
+          <div class="field">
+            <label for="wm-design">Diseño</label>
+            <select id="wm-design">
+              <option value="text">Solo texto</option>
+              <option value="logo">Solo logo</option>
+              <option value="both">Logo + texto</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="wm-pattern">Patrón</label>
+            <select id="wm-pattern">
+              <option value="diagonal">Diagonal</option>
+              <option value="tile">Mosaico</option>
+              <option value="center">Al centro</option>
+              <option value="corners">En las esquinas</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="wm-texture">Textura</label>
+            <select id="wm-texture">
+              <option value="soft">Suave</option>
+              <option value="strong">Marcada</option>
+              <option value="outline">Contorno</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <label for="wm-logo">Subir logo / sello (PNG o WEBP)</label>
+          <input type="file" id="wm-logo" accept="image/png,image/webp,image/jpeg" />
+          <label class="checkbox-field" style="margin-top:8px;">
+            <input type="checkbox" id="wm-clear-logo" />
+            Quitar logo actual
+          </label>
+        </div>
+        <div class="watermark-preview-wrap">
+          <img id="wm-preview" alt="Vista previa de la marca de agua" />
+        </div>
+        <div style="margin-top:16px;">
+          <button type="submit" class="primary" id="wm-save-btn" style="width:auto; padding:11px 24px;">Guardar marca de agua</button>
+        </div>
+      </form>
+    </div>
+
     <div id="list-message" class="message"></div>
     <div class="gallery-list" id="gallery-list"></div>
     <p class="empty-state" id="empty-state" style="display:none;">Todavía no creaste ninguna galería.</p>
@@ -179,8 +232,80 @@
       }
     });
 
+    function watermarkPreviewUrl() {
+      const params = new URLSearchParams({
+        text: document.getElementById('wm-text').value.trim() || 'FotoGalería Pro',
+        design: document.getElementById('wm-design').value,
+        pattern: document.getElementById('wm-pattern').value,
+        texture: document.getElementById('wm-texture').value,
+        t: Date.now(),
+      });
+      return `/api/watermark/preview?${params}`;
+    }
+
+    async function loadWatermarkPreview() {
+      const img = document.getElementById('wm-preview');
+      try {
+        const res = await fetch(watermarkPreviewUrl(), {
+          headers: { Authorization: `Bearer ${session.token}` },
+        });
+        if (!res.ok) throw new Error('preview');
+        const blob = await res.blob();
+        img.src = URL.createObjectURL(blob);
+      } catch {
+        img.removeAttribute('src');
+      }
+    }
+
+    async function loadWatermarkSettings() {
+      try {
+        const { settings } = await apiRequest('/api/watermark', { token: session.token });
+        document.getElementById('wm-text').value = settings.text || '';
+        document.getElementById('wm-design').value = settings.design || 'text';
+        document.getElementById('wm-pattern').value = settings.pattern || 'diagonal';
+        document.getElementById('wm-texture').value = settings.texture || 'soft';
+        loadWatermarkPreview();
+      } catch {
+        // El panel de galerías sigue funcionando aunque falte la marca.
+      }
+    }
+
+    ['wm-text', 'wm-design', 'wm-pattern', 'wm-texture'].forEach((id) => {
+      document.getElementById(id).addEventListener('change', loadWatermarkPreview);
+    });
+
+    document.getElementById('watermark-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('wm-save-btn');
+      const messageEl = document.getElementById('watermark-message');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+      const body = new FormData();
+      body.append('text', document.getElementById('wm-text').value.trim());
+      body.append('design', document.getElementById('wm-design').value);
+      body.append('pattern', document.getElementById('wm-pattern').value);
+      body.append('texture', document.getElementById('wm-texture').value);
+      if (document.getElementById('wm-clear-logo').checked) body.append('clearLogo', '1');
+      const logo = document.getElementById('wm-logo').files[0];
+      if (logo) body.append('logo', logo);
+
+      try {
+        await apiRequest('/api/watermark', { method: 'PUT', token: session.token, body, isFormData: true });
+        document.getElementById('wm-logo').value = '';
+        document.getElementById('wm-clear-logo').checked = false;
+        showMessage(messageEl, 'Marca de agua guardada. En cada galería podés reaplicarla a las fotos ya subidas.', 'success');
+        loadWatermarkPreview();
+      } catch (err) {
+        showMessage(messageEl, err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Guardar marca de agua';
+      }
+    });
+
     guardAdmin();
     loadGalleries();
+    loadWatermarkSettings();
   </script>
 </body>
 </html>

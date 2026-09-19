@@ -6,6 +6,7 @@ const { r2, BUCKET_NAME } = require('../config/r2');
 const photoModel = require('../models/photoModel');
 const galleryModel = require('../models/galleryModel');
 const { watermarkBuffer } = require('../utils/watermark');
+const { settingsForAdmin } = require('./watermarkController');
 
 const THUMBNAIL_WIDTH = 400;
 const PREVIEW_WIDTH = 1600;
@@ -27,15 +28,17 @@ async function uploadPhoto(req, res) {
 
     const metadata = await sharp(req.file.buffer).metadata();
 
+    const watermarkSettings = await settingsForAdmin(gallery.admin_id);
+
     const thumbnailRaw = await sharp(req.file.buffer)
       .resize({ width: THUMBNAIL_WIDTH, withoutEnlargement: true })
       .toBuffer();
-    const thumbnailBuffer = await watermarkBuffer(thumbnailRaw);
+    const thumbnailBuffer = await watermarkBuffer(thumbnailRaw, watermarkSettings);
 
     const previewRaw = await sharp(req.file.buffer)
       .resize({ width: PREVIEW_WIDTH, withoutEnlargement: true })
       .toBuffer();
-    const previewBuffer = await watermarkBuffer(previewRaw);
+    const previewBuffer = await watermarkBuffer(previewRaw, watermarkSettings);
 
     await r2.send(new PutObjectCommand({
       Bucket: BUCKET_NAME,
