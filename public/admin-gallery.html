@@ -38,9 +38,15 @@
           Galería pública (sin contraseña)
         </label>
       </div>
-      <div class="field" id="settings-password-field" style="margin-top:14px;">
-        <label for="settings-password">Nueva contraseña (dejar vacío para no cambiarla)</label>
-        <input type="text" id="settings-password" placeholder="Contraseña para los clientes" />
+      <div id="settings-private-fields" style="margin-top:14px;">
+        <div class="field">
+          <label for="settings-username">Usuario de acceso</label>
+          <input type="text" id="settings-username" placeholder="Usuario para los clientes" />
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <label for="settings-password">Nueva contraseña (dejar vacío para no cambiarla)</label>
+          <input type="text" id="settings-password" placeholder="Contraseña para los clientes" />
+        </div>
       </div>
       <div class="field" style="margin-top:14px;">
         <label for="settings-price">Precio por foto (dejar vacío si no vendés fotos)</label>
@@ -114,7 +120,8 @@
 
       document.getElementById('share-link').value = `${window.location.origin}/gallery.html?slug=${gallery.slug}`;
       document.getElementById('settings-public').checked = gallery.isPublic;
-      document.getElementById('settings-password-field').style.display = gallery.isPublic ? 'none' : 'block';
+      document.getElementById('settings-private-fields').style.display = gallery.isPublic ? 'none' : 'block';
+      document.getElementById('settings-username').value = gallery.accessUsername || '';
       document.getElementById('settings-price').value = gallery.pricePerPhoto || '';
     }
 
@@ -128,20 +135,21 @@
     });
 
     document.getElementById('settings-public').addEventListener('change', (e) => {
-      document.getElementById('settings-password-field').style.display = e.target.checked ? 'none' : 'block';
+      document.getElementById('settings-private-fields').style.display = e.target.checked ? 'none' : 'block';
     });
 
     document.getElementById('save-settings-btn').addEventListener('click', async () => {
       const messageEl = document.getElementById('settings-message');
       const isPublic = document.getElementById('settings-public').checked;
       const password = document.getElementById('settings-password').value;
+      const accessUsername = document.getElementById('settings-username').value.trim();
       const pricePerPhoto = document.getElementById('settings-price').value;
 
       try {
         await apiRequest(`/api/galleries/${currentGallery.id}`, {
           method: 'PUT',
           token: session.token,
-          body: { isPublic, password: password || undefined, pricePerPhoto },
+          body: { isPublic, password: password || undefined, accessUsername, pricePerPhoto },
         });
         showMessage(messageEl, 'Configuración guardada.', 'success');
         document.getElementById('settings-password').value = '';
@@ -162,8 +170,10 @@
       photos.forEach((photo) => {
         const card = document.createElement('div');
         card.className = 'photo-card';
+        const isCover = currentGallery && Number(currentGallery.coverPhotoId) === Number(photo.id);
         card.innerHTML = `
           <img src="${photo.thumbnailUrl}" alt="${photo.file_name}" loading="lazy" />
+          <button class="cover-btn${isCover ? ' active' : ''}" data-id="${photo.id}" title="Usar como foto de la galería">★</button>
           <button class="delete-btn" data-id="${photo.id}" title="Eliminar">✕</button>
         `;
         galleryGrid.appendChild(card);
@@ -171,12 +181,30 @@
       galleryGrid.querySelectorAll('.delete-btn').forEach((btn) => {
         btn.addEventListener('click', () => deletePhoto(btn.dataset.id));
       });
+      galleryGrid.querySelectorAll('.cover-btn').forEach((btn) => {
+        btn.addEventListener('click', () => setCoverPhoto(btn.dataset.id));
+      });
     }
 
     async function loadPhotos() {
       try {
         const { photos } = await apiRequest(`/api/galleries/${slug}/photos`, { token: session.token });
         renderPhotos(photos);
+      } catch (err) {
+        showMessage(uploadMessage, err.message, 'error');
+      }
+    }
+
+    async function setCoverPhoto(photoId) {
+      try {
+        await apiRequest(`/api/galleries/${currentGallery.id}`, {
+          method: 'PUT',
+          token: session.token,
+          body: { coverPhotoId: Number(photoId) },
+        });
+        currentGallery.coverPhotoId = Number(photoId);
+        loadPhotos();
+        showMessage(uploadMessage, 'Foto destacada actualizada. Esa es la portada en la home.', 'success');
       } catch (err) {
         showMessage(uploadMessage, err.message, 'error');
       }
@@ -248,6 +276,7 @@
       photoInput.value = '';
       folderInput.value = '';
       uploadBtn.disabled = false;
+      await loadGalleries();
       loadPhotos();
 
       setTimeout(() => { progressBox.style.display = 'none'; }, 3000);

@@ -6,16 +6,20 @@ const { signToken } = require('../utils/jwt');
 const { uniqueSlug } = require('../utils/slug');
 const { r2, BUCKET_NAME } = require('../config/r2');
 const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { withSignedUrls } = require('./photoController');
 
 async function createGallery(req, res) {
   try {
-    const { name, isPublic = true, password, pricePerPhoto } = req.body;
+    const { name, isPublic = true, password, accessUsername, pricePerPhoto } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'El nombre de la galería es obligatorio.' });
     }
     if (!isPublic && !password) {
       return res.status(400).json({ error: 'Las galerías privadas necesitan una contraseña.' });
+    }
+    if (!isPublic && !String(accessUsername || '').trim()) {
+      return res.status(400).json({ error: 'Las galerías privadas necesitan un usuario de acceso.' });
     }
     if (pricePerPhoto !== undefined && pricePerPhoto !== '' && Number(pricePerPhoto) < 0) {
       return res.status(400).json({ error: 'El precio no puede ser negativo.' });
@@ -30,6 +34,7 @@ async function createGallery(req, res) {
       slug,
       isPublic: !!isPublic,
       passwordHash,
+      accessUsername: !isPublic ? String(accessUsername).trim() : null,
       pricePerPhoto: pricePerPhoto ? Number(pricePerPhoto) : null,
     });
 
@@ -56,6 +61,43 @@ async function listMyGalleries(req, res) {
   }
 }
 
+async function findCoverPhoto(gallery) {
+  if (gallery.cover_photo_id) {
+    const featured = await photoModel.findById(gallery.cover_photo_id);
+    if (featured && featured.gallery_id === gallery.id) return featured;
+  }
+  const photos = await photoModel.findByGallery(gallery.id);
+  return photos[0] || null;
+}
+
+async function listCatalog(req, res) {
+  try {
+    const galleries = await galleryModel.findAll();
+    const items = await Promise.all(galleries.map(async (gallery) => {
+      const cover = await findCoverPhoto(gallery);
+      let coverUrl = null;
+      if (cover) {
+        try {
+          const signed = await withSignedUrls(cover, false);
+          coverUrl = signed.thumbnailUrl;
+        } catch (err) {
+          console.error('catalog cover error:', err);
+        }
+      }
+      return {
+        name: gallery.name,
+        slug: gallery.slug,
+        isPublic: !!gallery.is_public,
+        coverUrl,
+      };
+    }));
+    res.json({ galleries: items });
+  } catch (err) {
+    console.error('listCatalog error:', err);
+    res.status(500).json({ error: 'Error al listar las galerías.' });
+  }
+}
+
 async function getGalleryInfo(req, res) {
   const gallery = req.gallery;
   const locked = !gallery.is_public && !req.hasGalleryAccess;
@@ -74,18 +116,25 @@ async function getGalleryInfo(req, res) {
 async function unlockGallery(req, res) {
   try {
     const gallery = req.gallery;
-    const { password } = req.body;
+    const { username, password } = req.body;
 
     if (gallery.is_public) {
       return res.status(400).json({ error: 'Esta galería ya es pública.' });
     }
     if (!password) {
-      return res.status(400).json({ error: 'Ingresá la contraseña.' });
+      return res.status(400).json({ error: 'Ingresá el usuario y la contraseña.' });
+    }
+    if (gallery.access_username) {
+      const expected = String(gallery.access_username).trim().toLowerCase();
+      const given = String(username || '').trim().toLowerCase();
+      if (!given || given !== expected) {
+        return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });
+      }
     }
 
     const valid = await bcrypt.compare(password, gallery.password_hash || '');
     if (!valid) {
-      return res.status(401).json({ error: 'Contraseña incorrecta.' });
+      return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });
     }
 
     const token = signToken({ type: 'gallery-access', galleryId: gallery.id }, { expiresIn: '12h' });
@@ -103,7 +152,7 @@ async function updateGallery(req, res) {
       return res.status(404).json({ error: 'Galería no encontrada.' });
     }
 
-    const { name, isPublic, password, clearPassword, pricePerPhoto } = req.body;
+    const { name, isPublic, password, accessUsername, coverPhotoId, clearPassword, pricePerPhoto } = req.body;
     let passwordHash;
 
     if (isPublic === false && password) {
@@ -111,6 +160,20 @@ async function updateGallery(req, res) {
     }
     if (isPublic === false && !password && !gallery.password_hash && !clearPassword) {
       return res.status(400).json({ error: 'Las galerías privadas necesitan una contraseña.' });
+    }
+    if (isPublic === false) {
+      const nextUsername = accessUsername !== undefined
+        ? String(accessUsername || '').trim()
+        : gallery.access_username;
+      if (!nextUsername) {
+        return res.status(400).json({ error: 'Las galerías privadas necesitan un usuario de acceso.' });
+      }
+    }
+    if (coverPhotoId) {
+      const photo = await photoModel.findById(coverPhotoId);
+      if (!photo || photo.gallery_id !== gallery.id) {
+        return res.status(400).json({ error: 'La foto destacada no pertenece a esta galería.' });
+      }
     }
     if (pricePerPhoto !== undefined && pricePerPhoto !== '' && Number(pricePerPhoto) < 0) {
       return res.status(400).json({ error: 'El precio no puede ser negativo.' });
@@ -121,6 +184,10 @@ async function updateGallery(req, res) {
       isPublic,
       passwordHash,
       clearPassword: isPublic === true || clearPassword,
+      accessUsername: isPublic === true
+        ? null
+        : (accessUsername !== undefined ? String(accessUsername).trim() : undefined),
+      coverPhotoId,
       pricePerPhoto: pricePerPhoto !== undefined ? (pricePerPhoto ? Number(pricePerPhoto) : null) : undefined,
     });
 
@@ -173,6 +240,8 @@ function toSafeGallery(gallery) {
     slug: gallery.slug,
     isPublic: !!gallery.is_public,
     hasPassword: !!gallery.password_hash,
+    accessUsername: gallery.access_username || '',
+    coverPhotoId: gallery.cover_photo_id || null,
     pricePerPhoto: gallery.price_per_photo,
     createdAt: gallery.created_at,
   };
@@ -181,6 +250,7 @@ function toSafeGallery(gallery) {
 module.exports = {
   createGallery,
   listMyGalleries,
+  listCatalog,
   getGalleryInfo,
   unlockGallery,
   updateGallery,

@@ -3,78 +3,42 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>FotoGalería Pro — Galerías privadas de fotos</title>
+<title>FotoGalería Pro</title>
 <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="index.html">Foto<span>Galería</span> Pro</a>
     <nav>
-      <a href="#como-funciona">Cómo funciona</a>
       <a href="contact.html">Contacto</a>
       <a href="login.html" id="login-nav">Ingresar</a>
     </nav>
   </header>
 
-  <main>
-    <section class="hero">
-      <p class="hero-kicker">Para fotógrafos y sus clientes</p>
-      <h1>Tus sesiones, en una galería privada lista para elegir y pedir.</h1>
-      <p class="hero-lead">Subí las fotos, compartí un link y dejá que tus clientes elijan sus favoritas. Pedidos, contacto y protección de las imágenes, en un solo lugar.</p>
-      <div class="hero-actions">
-        <a class="cta-primary" href="contact.html">Quiero mi galería</a>
-        <a class="cta-secondary" href="login.html" id="hero-login">Ya soy fotógrafo — Ingresar</a>
-      </div>
-    </section>
-
-    <section class="home-section" id="como-funciona">
-      <h2>Cómo funciona</h2>
-      <div class="steps-grid">
-        <article class="step-card">
-          <span class="step-num">01</span>
-          <h3>El fotógrafo sube la sesión</h3>
-          <p>Creá una galería, definí si es pública o con contraseña, y subí las fotos de a muchas o por carpeta.</p>
-        </article>
-        <article class="step-card">
-          <span class="step-num">02</span>
-          <h3>El cliente elige sin cuenta</h3>
-          <p>Recibe el link, mira las fotos en grande y selecciona las que quiere. No necesita registrarse.</p>
-        </article>
-        <article class="step-card">
-          <span class="step-num">03</span>
-          <h3>Confirmás el pedido</h3>
-          <p>El cliente te escribe por WhatsApp con las fotos elegidas y el pedido queda en tu panel para marcar pagado.</p>
-        </article>
-      </div>
-    </section>
-
-    <section class="home-section">
-      <div class="split-grid">
-        <article class="split-card">
-          <h2>Si sos fotógrafo</h2>
-          <ul>
-            <li>Galerías privadas con contraseña</li>
-            <li>Precio por foto y pedidos con estado</li>
-            <li>Marca de agua y bloqueo de descarga casual</li>
-            <li>Mensajes de contacto y WhatsApp</li>
-          </ul>
-          <a class="cta-secondary" href="login.html" id="split-login">Ir al panel</a>
-        </article>
-        <article class="split-card">
-          <h2>Si te compartieron un link</h2>
-          <p>Abrí el enlace que te mandó el fotógrafo. Ahí vas a ver tu sesión, elegir las fotos y confirmar el pedido.</p>
-          <p class="muted">Si no tenés el link, escribinos y te ayudamos a encontrarlo.</p>
-          <a class="cta-secondary" href="contact.html">Contacto</a>
-        </article>
-      </div>
-    </section>
+  <main class="catalog-page">
+    <div class="catalog-grid" id="catalog-grid"></div>
+    <p class="empty-state" id="empty-state" style="display:none;">Todavía no hay galerías.</p>
   </main>
 
-  <footer class="home-footer">
-    <span>FotoGalería Pro</span>
-    <a href="contact.html">Contacto</a>
-    <a href="login.html">Ingresar</a>
-  </footer>
+  <div id="lock-modal" class="lock-modal" style="display:none;">
+    <div class="card">
+      <h1 id="lock-title">Galería privada</h1>
+      <p class="subtitle">Ingresá el usuario y la contraseña que te compartió el fotógrafo</p>
+      <div id="lock-message" class="message"></div>
+      <form id="unlock-form">
+        <div class="field">
+          <label for="gallery-username">Usuario</label>
+          <input type="text" id="gallery-username" required autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="gallery-password">Contraseña</label>
+          <input type="password" id="gallery-password" required autocomplete="current-password" />
+        </div>
+        <button type="submit" class="primary">Entrar</button>
+        <button type="button" class="secondary" id="lock-cancel" style="width:100%; margin-top:10px;">Cancelar</button>
+      </form>
+    </div>
+  </div>
 
   <script src="assets/js/api.js"></script>
   <script>
@@ -83,10 +47,96 @@
       const dest = session.user?.role === 'admin' ? 'admin.html' : 'dashboard.html';
       document.getElementById('login-nav').textContent = 'Ir al panel';
       document.getElementById('login-nav').href = dest;
-      document.getElementById('hero-login').textContent = 'Ir a mi panel';
-      document.getElementById('hero-login').href = dest;
-      document.getElementById('split-login').href = dest;
     }
+
+    const grid = document.getElementById('catalog-grid');
+    const emptyState = document.getElementById('empty-state');
+    const modal = document.getElementById('lock-modal');
+    let pendingSlug = null;
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function openGallery(slug) {
+      window.location.href = `gallery.html?slug=${encodeURIComponent(slug)}`;
+    }
+
+    function showLock(name, slug) {
+      pendingSlug = slug;
+      document.getElementById('lock-title').textContent = name;
+      document.getElementById('lock-message').className = 'message';
+      document.getElementById('unlock-form').reset();
+      modal.style.display = 'flex';
+    }
+
+    function hideLock() {
+      pendingSlug = null;
+      modal.style.display = 'none';
+    }
+
+    function renderCatalog(galleries) {
+      emptyState.style.display = galleries.length ? 'none' : 'block';
+      grid.innerHTML = galleries.map((g) => `
+        <button type="button" class="catalog-card" data-slug="${escapeHtml(g.slug)}" data-public="${g.isPublic ? '1' : '0'}" data-name="${escapeHtml(g.name)}">
+          ${g.coverUrl
+            ? `<img class="protected-photo" src="${escapeHtml(g.coverUrl)}" alt="${escapeHtml(g.name)}" loading="lazy" draggable="false" />`
+            : `<div class="catalog-card-empty">Próximamente</div>`}
+          <div class="img-shield"></div>
+          ${g.isPublic ? '' : '<span class="catalog-lock">Privada</span>'}
+          <div class="catalog-overlay"><h2>${escapeHtml(g.name)}</h2></div>
+        </button>
+      `).join('');
+
+      grid.querySelectorAll('.catalog-card').forEach((card) => {
+        card.addEventListener('click', () => {
+          if (card.dataset.public === '1') {
+            openGallery(card.dataset.slug);
+          } else {
+            showLock(card.dataset.name, card.dataset.slug);
+          }
+        });
+      });
+    }
+
+    document.getElementById('lock-cancel').addEventListener('click', hideLock);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) hideLock();
+    });
+
+    document.getElementById('unlock-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!pendingSlug) return;
+      const messageEl = document.getElementById('lock-message');
+      const username = document.getElementById('gallery-username').value.trim();
+      const password = document.getElementById('gallery-password').value;
+
+      try {
+        const { token } = await apiRequest(`/api/galleries/${pendingSlug}/unlock`, {
+          method: 'POST',
+          body: { username, password },
+        });
+        sessionStorage.setItem(`gallery_token_${pendingSlug}`, token);
+        openGallery(pendingSlug);
+      } catch (err) {
+        messageEl.textContent = err.message;
+        messageEl.className = 'message show error';
+      }
+    });
+
+    (async () => {
+      try {
+        const { galleries } = await apiRequest('/api/galleries/catalog');
+        renderCatalog(galleries);
+      } catch (err) {
+        emptyState.style.display = 'block';
+        emptyState.textContent = err.message || 'No se pudieron cargar las galerías.';
+      }
+    })();
   </script>
 </body>
 </html>

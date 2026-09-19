@@ -3,6 +3,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
+const { ensureSchema } = require('./src/config/ensureSchema');
 const authRoutes = require('./src/routes/authRoutes');
 const galleryRoutes = require('./src/routes/galleryRoutes');
 const contactRoutes = require('./src/routes/contactRoutes');
@@ -39,6 +40,10 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
-});
+ensureSchema()
+  .catch((err) => console.error('ensureSchema error:', err))
+  .finally(() => {
+    app.listen(PORT, () => {
+      console.log(`Servidor corriendo en http://localhost:${PORT}`);
+    });
+  });
