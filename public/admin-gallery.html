@@ -57,13 +57,14 @@
 
     <div class="upload-box">
       <form id="upload-form">
-        <input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp" multiple />
+        <input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple />
+        <input type="file" id="folder-input" webkitdirectory directory multiple />
+        <p class="upload-hint">JPG, PNG o WEBP. Podés elegir varias fotos o una carpeta.</p>
         <div class="upload-actions">
-          <button type="submit" class="primary" id="upload-btn">Subir fotos</button>
+          <button type="button" class="primary" id="upload-btn">Subir fotos</button>
           <button type="button" class="secondary" id="folder-btn">Subir carpeta</button>
           <button type="button" class="secondary" id="reprocess-btn">Aplicar marca de agua</button>
         </div>
-        <input type="file" id="folder-input" webkitdirectory directory multiple style="display:none;" />
       </form>
       <div id="upload-progress" class="upload-progress" style="display:none;">
         <div class="upload-progress-bar"><div class="upload-progress-fill" id="upload-progress-fill"></div></div>
@@ -228,7 +229,19 @@
     const progressText = document.getElementById('upload-progress-text');
     const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
-    document.getElementById('folder-btn').addEventListener('click', () => folderInput.click());
+    function isAllowedImage(file) {
+      if (ALLOWED_TYPES.includes(file.type)) return true;
+      return /\.(jpe?g|png|webp)$/i.test(file.name || '');
+    }
+
+    function openPicker(input) {
+      input.value = '';
+      input.click();
+    }
+
+    document.getElementById('upload-btn').addEventListener('click', () => openPicker(photoInput));
+    document.getElementById('folder-btn').addEventListener('click', () => openPicker(folderInput));
+    photoInput.addEventListener('change', () => uploadFiles(photoInput.files));
     document.getElementById('reprocess-btn').addEventListener('click', async () => {
       const btn = document.getElementById('reprocess-btn');
       btn.disabled = true;
@@ -251,11 +264,13 @@
 
     document.getElementById('upload-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      uploadFiles(photoInput.files);
     });
 
     async function uploadFiles(fileList) {
-      const files = Array.from(fileList).filter((f) => ALLOWED_TYPES.includes(f.type));
+      const selected = Array.from(fileList || []);
+      if (!selected.length) return;
+
+      const files = selected.filter(isAllowedImage);
       if (!files.length) {
         showMessage(uploadMessage, 'No se encontraron imágenes válidas (JPG, PNG o WEBP).', 'error');
         return;
