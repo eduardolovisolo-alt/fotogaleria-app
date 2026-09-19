@@ -139,7 +139,7 @@
     <div id="orders-box" class="empty-state">Cargando...</div>
   </main>
 
-  <script src="assets/js/api.js"></script>
+  <script src="assets/js/api.js?v=20260919"></script>
   <script src="assets/js/watermark-admin.js"></script>
   <script>
     const session = getSession();
@@ -440,7 +440,9 @@
         }
         box.className = '';
         box.innerHTML = orders.map((o) => {
-          const replyUrl = buildPhotographerReplyWhatsAppUrl(o, currentGallery.name);
+          const replyUrl = typeof buildPhotographerReplyWhatsAppUrl === 'function'
+            ? buildPhotographerReplyWhatsAppUrl(o, currentGallery.name)
+            : '';
           const photos = (o.items || []).map((item) => item.fileName).filter(Boolean);
           return `
           <article class="order-card">

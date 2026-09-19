@@ -34,7 +34,7 @@
     <div id="orders-box" class="empty-state">Cargando...</div>
   </main>
 
-  <script src="assets/js/api.js"></script>
+  <script src="assets/js/api.js?v=20260919"></script>
   <script>
     const session = getSession();
     if (!session) window.location.href = 'login.html';
@@ -87,8 +87,11 @@
       }
 
       box.className = '';
+      try {
       box.innerHTML = orders.map((o) => {
-        const replyUrl = buildPhotographerReplyWhatsAppUrl(o, o.gallery_name);
+        const replyUrl = typeof buildPhotographerReplyWhatsAppUrl === 'function'
+          ? buildPhotographerReplyWhatsAppUrl(o, o.gallery_name)
+          : '';
         const photos = (o.items || []).map((item) => item.fileName).filter(Boolean);
         return `
           <article class="order-card">
@@ -117,6 +120,10 @@
       box.querySelectorAll('.order-status').forEach((select) => {
         select.addEventListener('change', () => updateOrderStatus(select.dataset.id, select.value));
       });
+      } catch (err) {
+        box.className = 'empty-state';
+        box.textContent = err.message || 'No se pudieron mostrar los pedidos.';
+      }
     }
 
     async function loadOrders() {
