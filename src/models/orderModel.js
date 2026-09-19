@@ -50,4 +50,18 @@ async function updateStatus(id, status) {
   return findById(id);
 }
 
-module.exports = { create, findById, findByGallery, findByAdmin, updateStatus };
+async function findItemsByOrderIds(orderIds) {
+  if (!orderIds.length) return [];
+  const placeholders = orderIds.map(() => '?').join(',');
+  const [rows] = await pool.query(
+    `SELECT oi.order_id, oi.photo_id, oi.price, p.file_name
+     FROM order_items oi
+     JOIN photos p ON p.id = oi.photo_id
+     WHERE oi.order_id IN (${placeholders})
+     ORDER BY oi.id ASC`,
+    orderIds
+  );
+  return rows;
+}
+
+module.exports = { create, findById, findByGallery, findByAdmin, updateStatus, findItemsByOrderIds };

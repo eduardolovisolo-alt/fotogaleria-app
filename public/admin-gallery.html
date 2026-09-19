@@ -288,7 +288,10 @@
           return;
         }
         box.className = '';
-        box.innerHTML = orders.map((o) => `
+        box.innerHTML = orders.map((o) => {
+          const replyUrl = buildPhotographerReplyWhatsAppUrl(o, currentGallery.name);
+          const photos = (o.items || []).map((item) => item.fileName).filter(Boolean);
+          return `
           <div class="order-row">
             <div>
               <strong>${o.client_name}</strong>
@@ -296,14 +299,19 @@
               <br/>
               <span class="meta">${o.client_email}${o.client_phone ? ` · ${o.client_phone}` : ''}</span><br/>
               <span class="meta">${o.photo_count} foto(s) · $${Number(o.total_amount).toLocaleString('es-AR')} · ${new Date(o.created_at).toLocaleString('es-AR')}</span>
+              ${photos.length ? `<span class="meta">${photos.join(', ')}</span>` : ''}
             </div>
-            <select data-id="${o.id}" class="order-status">
-              <option value="pending" ${o.status === 'pending' ? 'selected' : ''}>Pendiente</option>
-              <option value="paid" ${o.status === 'paid' ? 'selected' : ''}>Pagado</option>
-              <option value="cancelled" ${o.status === 'cancelled' ? 'selected' : ''}>Cancelado</option>
-            </select>
+            <div class="gallery-row-actions">
+              ${replyUrl ? `<a class="wa-btn wa-btn-sm" href="${replyUrl}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ''}
+              <select data-id="${o.id}" class="order-status">
+                <option value="pending" ${o.status === 'pending' ? 'selected' : ''}>Pendiente</option>
+                <option value="paid" ${o.status === 'paid' ? 'selected' : ''}>Pagado</option>
+                <option value="cancelled" ${o.status === 'cancelled' ? 'selected' : ''}>Cancelado</option>
+              </select>
+            </div>
           </div>
-        `).join('');
+        `;
+        }).join('');
 
         box.querySelectorAll('.order-status').forEach((select) => {
           select.addEventListener('change', () => updateOrderStatus(select.dataset.id, select.value));
