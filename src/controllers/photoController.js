@@ -26,24 +26,34 @@ async function uploadPhoto(req, res) {
     const thumbnailKey = `thumbnails/${gallery.id}/${id}.${ext}`;
     const previewKey = `previews/${gallery.id}/${id}.${ext}`;
 
-    const metadata = await sharp(req.file.buffer).metadata();
+    if (!BUCKET_NAME) {
+      return res.status(500).json({ error: 'Falta configurar el almacenamiento de fotos (R2).' });
+    }
 
-    const watermarkSettings = await settingsForAdmin(gallery.admin_id);
+    const oriented = await sharp(req.file.buffer).rotate().toBuffer();
+    const metadata = await sharp(oriented).metadata();
 
-    const thumbnailRaw = await sharp(req.file.buffer)
+    const thumbnailRaw = await sharp(oriented)
       .resize({ width: THUMBNAIL_WIDTH, withoutEnlargement: true })
       .toBuffer();
-    const thumbnailBuffer = await watermarkBuffer(thumbnailRaw, watermarkSettings);
-
-    const previewRaw = await sharp(req.file.buffer)
+    const previewRaw = await sharp(oriented)
       .resize({ width: PREVIEW_WIDTH, withoutEnlargement: true })
       .toBuffer();
-    const previewBuffer = await watermarkBuffer(previewRaw, watermarkSettings);
+
+    let thumbnailBuffer = thumbnailRaw;
+    let previewBuffer = previewRaw;
+    try {
+      const watermarkSettings = await settingsForAdmin(gallery.admin_id);
+      thumbnailBuffer = await watermarkBuffer(thumbnailRaw, watermarkSettings);
+      previewBuffer = await watermarkBuffer(previewRaw, watermarkSettings);
+    } catch (err) {
+      console.error('watermark apply error, uploading without mark:', err);
+    }
 
     await r2.send(new PutObjectCommand({
       Bucket: BUCKET_NAME,
       Key: originalKey,
-      Body: req.file.buffer,
+      Body: oriented,
       ContentType: req.file.mimetype,
     }));
 
@@ -80,7 +90,10 @@ async function uploadPhoto(req, res) {
     res.status(201).json({ photo: await withSignedUrls(photo, true) });
   } catch (err) {
     console.error('uploadPhoto error:', err);
-    res.status(500).json({ error: 'Error al subir la foto.' });
+    const message = /credentials|access|bucket|nosuch|invalidaccess/i.test(String(err.message || ''))
+      ? 'No se pudo guardar la foto en el almacenamiento. Revisá la configuración de R2.'
+      : 'Error al subir la foto.';
+    res.status(500).json({ error: message });
   }
 }
 

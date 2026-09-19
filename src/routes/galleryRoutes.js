@@ -8,6 +8,7 @@ const { protect, requireRole } = require('../middleware/authMiddleware');
 const { loadGallery, requireGalleryAccess } = require('../middleware/galleryAccessMiddleware');
 const upload = require('../middleware/uploadMiddleware');
 const { verifyToken } = require('../utils/jwt');
+const { sameId } = require('../utils/ids');
 
 const router = express.Router();
 
@@ -56,7 +57,7 @@ router.get('/:slug/selections/mine', loadGallery, requireGalleryAccess, selectio
 router.post('/:slug/orders', loadGallery, requireGalleryAccess, orderController.createOrder);
 
 function requireGalleryOwner(req, res, next) {
-  if (req.gallery.admin_id !== req.user.sub) {
+  if (!sameId(req.gallery.admin_id, req.user.sub)) {
     return res.status(403).json({ error: 'No sos el dueño de esta galería.' });
   }
   next();

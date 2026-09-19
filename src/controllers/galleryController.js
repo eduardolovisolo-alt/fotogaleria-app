@@ -4,6 +4,7 @@ const photoModel = require('../models/photoModel');
 const selectionModel = require('../models/selectionModel');
 const { signToken } = require('../utils/jwt');
 const { uniqueSlug } = require('../utils/slug');
+const { sameId } = require('../utils/ids');
 const { r2, BUCKET_NAME } = require('../config/r2');
 const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { withSignedUrls } = require('./photoController');
@@ -154,7 +155,7 @@ async function unlockGallery(req, res) {
 async function updateGallery(req, res) {
   try {
     const gallery = await galleryModel.findById(req.params.id);
-    if (!gallery || gallery.admin_id !== req.user.sub) {
+    if (!gallery || !sameId(gallery.admin_id, req.user.sub)) {
       return res.status(404).json({ error: 'Galería no encontrada.' });
     }
 
@@ -207,7 +208,7 @@ async function updateGallery(req, res) {
 async function deleteGallery(req, res) {
   try {
     const gallery = await galleryModel.findById(req.params.id);
-    if (!gallery || gallery.admin_id !== req.user.sub) {
+    if (!gallery || !sameId(gallery.admin_id, req.user.sub)) {
       return res.status(404).json({ error: 'Galería no encontrada.' });
     }
 
@@ -228,7 +229,7 @@ async function deleteGallery(req, res) {
 async function getSelections(req, res) {
   try {
     const gallery = await galleryModel.findById(req.params.id);
-    if (!gallery || gallery.admin_id !== req.user.sub) {
+    if (!gallery || !sameId(gallery.admin_id, req.user.sub)) {
       return res.status(404).json({ error: 'Galería no encontrada.' });
     }
     const selections = await selectionModel.findByGallery(gallery.id);

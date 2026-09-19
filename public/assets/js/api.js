@@ -101,8 +101,12 @@ async function apiRequest(path, { method = 'GET', body, token, isFormData = fals
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const error = new Error(data.error || 'Ocurrió un error inesperado.');
+    const fallback = res.status === 413
+      ? 'La foto es demasiado pesada para el servidor.'
+      : 'Ocurrió un error inesperado.';
+    const error = new Error(data.error || fallback);
     error.locked = !!data.locked;
+    error.status = res.status;
     throw error;
   }
   return data;
