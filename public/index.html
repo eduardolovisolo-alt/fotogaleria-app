@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>FotoGalería Pro</title>
-<link rel="stylesheet" href="assets/css/style.css" />
+<link rel="stylesheet" href="assets/css/style.css?v=20260919-autor" />
 </head>
 <body>
   <header class="topbar">
@@ -23,7 +23,7 @@
         <h1>Elegí una sesión para ver las fotos</h1>
         <p>Si la galería es privada, usá el usuario y la contraseña que te compartió el fotógrafo.</p>
       </div>
-      <div class="catalog-grid" id="catalog-grid"></div>
+      <div id="catalog"></div>
       <p class="empty-state" id="empty-state" style="display:none;">Todavía no hay galerías.</p>
     </section>
 
@@ -109,7 +109,7 @@
       document.getElementById('footer-login').href = dest;
     }
 
-    const grid = document.getElementById('catalog-grid');
+    const catalog = document.getElementById('catalog');
     const emptyState = document.getElementById('empty-state');
     const modal = document.getElementById('lock-modal');
     let pendingSlug = null;
@@ -145,9 +145,23 @@
       return `<span class="catalog-count">${n} foto${n === 1 ? '' : 's'}</span>`;
     }
 
-    function renderCatalog(galleries) {
-      emptyState.style.display = galleries.length ? 'none' : 'block';
-      grid.innerHTML = galleries.map((g) => `
+    function groupByAuthor(galleries) {
+      const groups = [];
+      const byAuthor = new Map();
+      galleries.forEach((gallery) => {
+        const author = String(gallery.author || '').trim() || 'Sin autor';
+        if (!byAuthor.has(author)) {
+          const list = [];
+          byAuthor.set(author, list);
+          groups.push({ author, galleries: list });
+        }
+        byAuthor.get(author).push(gallery);
+      });
+      return groups;
+    }
+
+    function galleryCard(g) {
+      return `
         <button type="button" class="catalog-card" data-slug="${escapeHtml(g.slug)}" data-public="${g.isPublic ? '1' : '0'}" data-name="${escapeHtml(g.name)}">
           ${g.coverUrl
             ? `<img class="protected-photo" src="${escapeHtml(g.coverUrl)}" alt="${escapeHtml(g.name)}" loading="lazy" draggable="false" />`
@@ -156,13 +170,24 @@
           ${g.isPublic ? '' : '<span class="catalog-lock">Privada</span>'}
           <div class="catalog-overlay">
             <h2>${escapeHtml(g.name)}</h2>
-            ${g.author ? `<span class="catalog-author">${escapeHtml(g.author)}</span>` : ''}
             ${photoCountLabel(g.photoCount)}
           </div>
         </button>
+      `;
+    }
+
+    function renderCatalog(galleries) {
+      emptyState.style.display = galleries.length ? 'none' : 'block';
+      catalog.innerHTML = groupByAuthor(galleries).map((group) => `
+        <section class="catalog-author-block">
+          <h2 class="catalog-author-heading">${escapeHtml(group.author)}</h2>
+          <div class="catalog-grid">
+            ${group.galleries.map(galleryCard).join('')}
+          </div>
+        </section>
       `).join('');
 
-      grid.querySelectorAll('.catalog-card').forEach((card) => {
+      catalog.querySelectorAll('.catalog-card').forEach((card) => {
         card.addEventListener('click', () => {
           if (card.dataset.public === '1') {
             openGallery(card.dataset.slug);

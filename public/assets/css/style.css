@@ -1437,6 +1437,18 @@ body:has(.lightbox:not([hidden])) .whatsapp-float {
   max-width: 520px;
 }
 
+.catalog-author-block {
+  margin: 0 0 28px;
+}
+
+.catalog-author-heading {
+  margin: 0 4px 12px;
+  font-size: clamp(1.2rem, 2.8vw, 1.6rem);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
 .catalog-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1492,16 +1504,11 @@ body:has(.lightbox:not([hidden])) .whatsapp-float {
   line-height: 1.25;
 }
 
-.catalog-author,
 .catalog-count {
   display: block;
   margin-top: 3px;
   color: rgba(242, 240, 234, 0.78);
   font-size: 0.68rem;
-}
-
-.catalog-author {
-  color: var(--accent);
 }
 
 .catalog-lock {
