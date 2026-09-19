@@ -40,7 +40,7 @@ async function findByAdmin(adminId) {
      JOIN galleries g ON g.id = o.gallery_id
      WHERE g.admin_id = ?
      ORDER BY o.created_at DESC`,
-    [adminId]
+    [Number(adminId)]
   );
   return rows;
 }

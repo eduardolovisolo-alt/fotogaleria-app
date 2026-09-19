@@ -20,6 +20,7 @@ router.put('/:id', protect, requireRole('admin'), galleryController.updateGaller
 router.delete('/:id', protect, requireRole('admin'), galleryController.deleteGallery);
 router.get('/:id/selections', protect, requireRole('admin'), galleryController.getSelections);
 router.get('/:id/orders', protect, requireRole('admin'), orderController.listGalleryOrders);
+router.get('/:slug/admin-orders', protect, requireRole('admin'), loadGallery, requireGalleryOwner, orderController.listGalleryOrders);
 
 // Subida/borrado de fotos: requiere admin logueado, dueño de la galería (verificado en el controller vía slug)
 router.post(

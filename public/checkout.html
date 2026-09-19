@@ -51,7 +51,7 @@
     <div class="create-panel" style="text-align:center;">
       <h2>¡Pedido recibido!</h2>
       <p style="color:var(--text-muted);">Pedido #<span id="order-id"></span> — <span id="order-summary"></span></p>
-      <p style="color:var(--text-muted); margin-top:16px;">El pedido ya está en el panel del fotógrafo. Completá el envío por WhatsApp para coordinar el pago y la entrega.</p>
+      <p style="color:var(--text-muted); margin-top:16px;">El pedido ya está en el panel del fotógrafo. Tocá el botón verde para mandar el pedido por WhatsApp y coordinar el pago.</p>
       <a href="#" id="whatsapp-order-link" class="wa-btn" target="_blank" rel="noopener noreferrer">Enviar pedido por WhatsApp</a>
       <a href="#" id="back-to-gallery" class="admin-link" style="margin-top:20px;">Volver a la galería</a>
     </div>
@@ -62,9 +62,11 @@
     const params = new URLSearchParams(window.location.search);
     const slug = params.get('slug');
     if (!slug) window.location.href = 'index.html';
+    const galleryApi = `/api/galleries/${encodeURIComponent(slug)}`;
+    const galleryPage = `gallery.html?slug=${encodeURIComponent(slug)}`;
 
-    document.getElementById('back-link').href = `gallery.html?slug=${slug}`;
-    document.getElementById('back-to-gallery').href = `gallery.html?slug=${slug}`;
+    document.getElementById('back-link').href = galleryPage;
+    document.getElementById('back-to-gallery').href = galleryPage;
 
     const clientToken = getClientToken();
     const galleryToken = sessionStorage.getItem(`gallery_token_${slug}`) || null;
@@ -78,9 +80,9 @@
 
     async function init() {
       try {
-        const { gallery } = await apiRequest(`/api/galleries/${slug}`, { extraHeaders: galleryHeaders() });
+        const { gallery } = await apiRequest(galleryApi, { extraHeaders: galleryHeaders() });
         if (gallery.locked) {
-          window.location.href = `gallery.html?slug=${slug}`;
+          window.location.href = galleryPage;
           return;
         }
         galleryName = gallery.name;
@@ -88,19 +90,19 @@
         pricePerPhoto = Number(gallery.pricePerPhoto) || 0;
 
         const { selectedPhotoIds } = await apiRequest(
-          `/api/galleries/${slug}/selections/mine?clientToken=${clientToken}`,
+          `${galleryApi}/selections/mine?clientToken=${encodeURIComponent(clientToken)}`,
           { extraHeaders: galleryHeaders() }
         );
 
         if (!selectedPhotoIds.length) {
           document.getElementById('checkout-view').innerHTML = `
-            <p class="empty-state">Todavía no seleccionaste ninguna foto. <a href="gallery.html?slug=${slug}">Volvé a la galería</a> para elegir.</p>
+            <p class="empty-state">Todavía no seleccionaste ninguna foto. <a href="${galleryPage}">Volvé a la galería</a> para elegir.</p>
           `;
           return;
         }
 
-        const { photos } = await apiRequest(`/api/galleries/${slug}/photos`, { extraHeaders: galleryHeaders() });
-        selectedPhotos = photos.filter((p) => selectedPhotoIds.includes(p.id));
+        const { photos } = await apiRequest(`${galleryApi}/photos`, { extraHeaders: galleryHeaders() });
+        selectedPhotos = photos.filter((p) => selectedPhotoIds.some((id) => Number(id) === Number(p.id)));
         renderPhotos();
         renderTotal();
       } catch (err) {
@@ -133,9 +135,7 @@
         clientEmail: email,
         clientPhone: phone,
       });
-      const link = document.getElementById('whatsapp-order-link');
-      link.href = url;
-      window.open(url, '_blank', 'noopener,noreferrer');
+      openWhatsApp(url, document.getElementById('whatsapp-order-link'));
     }
 
     document.getElementById('checkout-form').addEventListener('submit', async (e) => {
@@ -150,7 +150,7 @@
         const clientEmail = document.getElementById('client-email').value.trim();
         const clientPhone = document.getElementById('client-phone').value.trim();
 
-        const { order, photos } = await apiRequest(`/api/galleries/${slug}/orders`, {
+        const { order, photos } = await apiRequest(`${galleryApi}/orders`, {
           method: 'POST',
           extraHeaders: galleryHeaders(),
           body: { clientToken, clientName, clientEmail, clientPhone },

@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const galleryModel = require('../models/galleryModel');
 const photoModel = require('../models/photoModel');
 const selectionModel = require('../models/selectionModel');
+const orderModel = require('../models/orderModel');
 const { signToken } = require('../utils/jwt');
 const { uniqueSlug } = require('../utils/slug');
 const { sameId } = require('../utils/ids');
@@ -52,7 +53,8 @@ async function listMyGalleries(req, res) {
     const withCounts = await Promise.all(
       galleries.map(async (g) => {
         const photos = await photoModel.findByGallery(g.id);
-        return { ...toSafeGallery(g), photoCount: photos.length };
+        const orders = await orderModel.findByGallery(g.id);
+        return { ...toSafeGallery(g), photoCount: photos.length, orderCount: orders.length };
       })
     );
     res.json({ galleries: withCounts });

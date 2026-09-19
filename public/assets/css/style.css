@@ -425,7 +425,13 @@ button.primary:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-bottom: 24px;
+}
+
+#pedidos {
+  scroll-margin-top: 20px;
 }
 
 .page-header h1 {
@@ -538,6 +544,19 @@ a.secondary:hover {
   border-radius: 10px;
   padding: 24px;
   margin-bottom: 28px;
+}
+
+#marca-de-agua {
+  scroll-margin-top: 20px;
+}
+
+.create-panel input[type="file"] {
+  position: static;
+  width: 100%;
+  height: auto;
+  opacity: 1;
+  overflow: visible;
+  clip: auto;
 }
 
 .create-panel h2 {
