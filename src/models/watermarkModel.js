@@ -3,7 +3,7 @@ const pool = require('../config/db');
 const DEFAULTS = {
   text: 'FotoGalería Pro',
   pattern: 'diagonal',
-  texture: 'soft',
+  texture: 'strong',
   design: 'text',
   logo_key: null,
 };

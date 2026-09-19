@@ -3,7 +3,7 @@ const sharp = require('sharp');
 const DEFAULTS = {
   text: 'FotoGalería Pro',
   pattern: 'diagonal',
-  texture: 'soft',
+  texture: 'strong',
   design: 'text',
 };
 
@@ -54,12 +54,18 @@ async function buildStamp({ text, design, texture, logoBuffer, size = 420 }) {
 
   if (useText) {
     const fill = texture === 'outline' ? '#ffffff' : '#f2f0ea';
-    const stroke = texture === 'outline' ? 'stroke:#1a1a1a;stroke-width:3px;' : '';
+    const strokeWidth = Math.max(1, Math.round(size * 0.008));
+    const stroke = texture === 'outline' ? `stroke:#1a1a1a;stroke-width:${strokeWidth}px;` : '';
+    const rawSize = (size * 0.86) / Math.max(text.length * 0.62, 1);
+    const fontSize = Math.max(12, Math.round(Math.min(size * 0.14, rawSize)));
+    const letterSpacing = Math.max(0, Math.round(fontSize * 0.04));
+    const svgHeight = Math.max(36, Math.round(fontSize * 1.8));
     const svg = Buffer.from(`
-      <svg width="${size}" height="${Math.round(size * 0.38)}" xmlns="http://www.w3.org/2000/svg">
-        <text x="50%" y="58%" text-anchor="middle" dominant-baseline="middle"
-          font-family="DejaVu Sans, Arial, sans-serif" font-size="34" font-weight="700"
-          fill="${fill}" fill-opacity="0.95" letter-spacing="2"
+      <svg width="${size}" height="${svgHeight}" xmlns="http://www.w3.org/2000/svg">
+        <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle"
+          font-family="DejaVu Sans, Arial, sans-serif" font-size="${fontSize}" font-weight="700"
+          fill="${fill}" fill-opacity="0.95" letter-spacing="${letterSpacing}"
+          textLength="${Math.round(size * 0.9)}" lengthAdjust="spacingAndGlyphs"
           style="${stroke}">${escapeXml(text)}</text>
       </svg>
     `);
@@ -169,12 +175,30 @@ async function watermarkBuffer(buffer, rawSettings) {
 async function previewWatermark(rawSettings) {
   const sample = await sharp({
     create: {
-      width: 720,
-      height: 480,
+      width: 900,
+      height: 560,
       channels: 3,
-      background: { r: 42, g: 42, b: 46 },
+      background: { r: 86, g: 78, b: 70 },
     },
   })
+    .composite([
+      {
+        input: Buffer.from(`
+          <svg width="900" height="560" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#6d6458"/>
+                <stop offset="0.5" stop-color="#3f4a52"/>
+                <stop offset="1" stop-color="#2b2a28"/>
+              </linearGradient>
+            </defs>
+            <rect width="900" height="560" fill="url(#g)"/>
+            <circle cx="220" cy="180" r="90" fill="#c4a574" fill-opacity="0.28"/>
+            <circle cx="680" cy="390" r="130" fill="#8aa0b5" fill-opacity="0.2"/>
+          </svg>
+        `),
+      },
+    ])
     .jpeg()
     .toBuffer();
   return watermarkBuffer(sample, rawSettings);
