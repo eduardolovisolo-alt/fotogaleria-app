@@ -74,7 +74,12 @@ async function listCatalog(req, res) {
   try {
     const galleries = await galleryModel.findAll();
     const items = await Promise.all(galleries.map(async (gallery) => {
-      const cover = await findCoverPhoto(gallery);
+      const photos = await photoModel.findByGallery(gallery.id);
+      let cover = null;
+      if (gallery.cover_photo_id) {
+        cover = photos.find((photo) => Number(photo.id) === Number(gallery.cover_photo_id)) || null;
+      }
+      if (!cover) cover = photos[0] || null;
       let coverUrl = null;
       if (cover) {
         try {
@@ -89,6 +94,7 @@ async function listCatalog(req, res) {
         slug: gallery.slug,
         isPublic: !!gallery.is_public,
         coverUrl,
+        photoCount: photos.length,
       };
     }));
     res.json({ galleries: items });

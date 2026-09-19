@@ -10,15 +10,71 @@
   <header class="topbar">
     <a class="brand" href="index.html">Foto<span>Galería</span> Pro</a>
     <nav>
+      <a href="#como-funciona">Cómo funciona</a>
       <a href="contact.html">Contacto</a>
       <a href="login.html" id="login-nav">Ingresar</a>
     </nav>
   </header>
 
-  <main class="catalog-page">
-    <div class="catalog-grid" id="catalog-grid"></div>
-    <p class="empty-state" id="empty-state" style="display:none;">Todavía no hay galerías.</p>
+  <main>
+    <section class="catalog-page">
+      <div class="catalog-intro">
+        <p class="hero-kicker">Galerías</p>
+        <h1>Elegí una sesión para ver las fotos</h1>
+        <p>Si la galería es privada, usá el usuario y la contraseña que te compartió el fotógrafo.</p>
+      </div>
+      <div class="catalog-grid" id="catalog-grid"></div>
+      <p class="empty-state" id="empty-state" style="display:none;">Todavía no hay galerías.</p>
+    </section>
+
+    <section class="home-section" id="como-funciona">
+      <h2>Cómo funciona</h2>
+      <div class="steps-grid">
+        <article class="step-card">
+          <span class="step-num">01</span>
+          <h3>Entrá a tu galería</h3>
+          <p>Tocá la portada. Si es privada, ingresá el usuario y la contraseña del fotógrafo.</p>
+        </article>
+        <article class="step-card">
+          <span class="step-num">02</span>
+          <h3>Elegí las fotos</h3>
+          <p>Navegá en grande, seleccioná las que querés y seguí al pedido. No necesitás crear una cuenta.</p>
+        </article>
+        <article class="step-card">
+          <span class="step-num">03</span>
+          <h3>Confirmá por WhatsApp</h3>
+          <p>El pedido llega al panel del fotógrafo y le escribís por WhatsApp para coordinar el pago y la entrega.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="home-section">
+      <div class="split-grid">
+        <article class="split-card">
+          <h2>Si sos fotógrafo</h2>
+          <ul>
+            <li>Galerías públicas o con usuario y contraseña</li>
+            <li>Marca de agua, portada y pedidos en un panel</li>
+            <li>Los clientes te escriben por WhatsApp</li>
+          </ul>
+          <a class="cta-secondary" href="login.html" id="split-login">Ir al panel</a>
+        </article>
+        <article class="split-card">
+          <h2>Si te compartieron un link</h2>
+          <p>También podés abrir directo el enlace de tu sesión. Si no lo tenés, buscá la galería arriba o escribinos.</p>
+          <p class="muted">¿Dudas con el acceso? Te ayudamos a entrar.</p>
+          <a class="cta-secondary" href="contact.html">Contacto</a>
+        </article>
+      </div>
+    </section>
   </main>
+
+  <footer class="home-footer">
+    <span>FotoGalería Pro</span>
+    <a href="#como-funciona">Cómo funciona</a>
+    <a href="contact.html">Contacto</a>
+    <a href="login.html" id="footer-login">Ingresar</a>
+  </footer>
 
   <div id="lock-modal" class="lock-modal" style="display:none;">
     <div class="card">
@@ -47,6 +103,10 @@
       const dest = session.user?.role === 'admin' ? 'admin.html' : 'dashboard.html';
       document.getElementById('login-nav').textContent = 'Ir al panel';
       document.getElementById('login-nav').href = dest;
+      document.getElementById('split-login').textContent = 'Ir a mi panel';
+      document.getElementById('split-login').href = dest;
+      document.getElementById('footer-login').textContent = 'Ir al panel';
+      document.getElementById('footer-login').href = dest;
     }
 
     const grid = document.getElementById('catalog-grid');
@@ -79,6 +139,12 @@
       modal.style.display = 'none';
     }
 
+    function photoCountLabel(count) {
+      const n = Number(count) || 0;
+      if (!n) return '';
+      return `<span class="catalog-count">${n} foto${n === 1 ? '' : 's'}</span>`;
+    }
+
     function renderCatalog(galleries) {
       emptyState.style.display = galleries.length ? 'none' : 'block';
       grid.innerHTML = galleries.map((g) => `
@@ -88,7 +154,10 @@
             : `<div class="catalog-card-empty">Próximamente</div>`}
           <div class="img-shield"></div>
           ${g.isPublic ? '' : '<span class="catalog-lock">Privada</span>'}
-          <div class="catalog-overlay"><h2>${escapeHtml(g.name)}</h2></div>
+          <div class="catalog-overlay">
+            <h2>${escapeHtml(g.name)}</h2>
+            ${photoCountLabel(g.photoCount)}
+          </div>
         </button>
       `).join('');
 
