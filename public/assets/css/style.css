@@ -283,6 +283,7 @@ button.primary:disabled {
 }
 
 .upload-box {
+  position: relative;
   background: var(--bg-panel);
   border: 1px dashed var(--border);
   border-radius: var(--radius);
@@ -292,14 +293,24 @@ button.primary:disabled {
 }
 
 .upload-box input[type="file"] {
-  color: var(--text-muted);
-  font-size: 0.85rem;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
 }
 
 .upload-box button.primary {
   width: auto;
   padding: 10px 24px;
   margin-top: 14px;
+}
+
+.upload-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
 }
 
 .upload-actions {
