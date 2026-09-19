@@ -60,6 +60,12 @@ function buildPhotographerReplyWhatsAppUrl(order, galleryName) {
   return whatsappHref(text, number);
 }
 
+window.toWhatsAppNumber = toWhatsAppNumber;
+window.whatsappHref = whatsappHref;
+window.openWhatsApp = openWhatsApp;
+window.buildClientOrderWhatsAppUrl = buildClientOrderWhatsAppUrl;
+window.buildPhotographerReplyWhatsAppUrl = buildPhotographerReplyWhatsAppUrl;
+
 function injectWhatsAppButton() {
   if (WHATSAPP_ADMIN_PAGES.includes(window.location.pathname)) return;
 

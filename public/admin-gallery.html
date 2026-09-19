@@ -139,8 +139,8 @@
     <div id="orders-box" class="empty-state">Cargando...</div>
   </main>
 
-  <script src="assets/js/api.js"></script>
-  <script src="assets/js/watermark-admin.js"></script>
+  <script src="assets/js/api.js?v=20260919-wm"></script>
+  <script src="assets/js/watermark-admin.js?v=20260919-wm"></script>
   <script>
     const session = getSession();
     if (!session) window.location.href = 'login.html';
@@ -308,7 +308,8 @@
           method: 'POST',
           token: session.token,
         });
-        showMessage(uploadMessage, data.message || 'Marca de agua aplicada.', 'success');
+        const type = data.failed ? 'error' : 'success';
+        showMessage(uploadMessage, data.message || 'Marca de agua aplicada.', type);
         loadPhotos();
       } catch (err) {
         showMessage(uploadMessage, err.message, 'error');
@@ -440,7 +441,9 @@
         }
         box.className = '';
         box.innerHTML = orders.map((o) => {
-          const replyUrl = buildPhotographerReplyWhatsAppUrl(o, currentGallery.name);
+          const replyUrl = typeof buildPhotographerReplyWhatsAppUrl === 'function'
+            ? buildPhotographerReplyWhatsAppUrl(o, currentGallery.name)
+            : '';
           const photos = (o.items || []).map((item) => item.fileName).filter(Boolean);
           return `
           <article class="order-card">
