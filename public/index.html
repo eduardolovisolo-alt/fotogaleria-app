@@ -35,7 +35,7 @@
           <input type="password" id="gallery-password" required autocomplete="current-password" />
         </div>
         <button type="submit" class="primary">Entrar</button>
-        <button type="button" class="secondary" id="lock-cancel" style="width:100%; margin-top:10px;">Cancelar</button>
+        <button type="button" class="secondary" id="lock-cancel" style="width:100%; margin-top:10px;">Volver a galerías</button>
       </form>
     </div>
   </div>
@@ -106,6 +106,9 @@
     document.getElementById('lock-cancel').addEventListener('click', hideLock);
     modal.addEventListener('click', (e) => {
       if (e.target === modal) hideLock();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal.style.display === 'flex') hideLock();
     });
 
     document.getElementById('unlock-form').addEventListener('submit', async (e) => {
