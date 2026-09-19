@@ -66,7 +66,7 @@ function bindWatermarkAdmin(session) {
       document.getElementById('wm-logo').value = '';
       document.getElementById('wm-clear-logo').checked = false;
       if (typeof showMessage === 'function') {
-        showMessage(messageEl, 'Marca de agua guardada. Después podés aplicarla a las fotos ya subidas.', 'success');
+        showMessage(messageEl, 'Marca de agua guardada. En cada galería elegís si se aplica.', 'success');
       } else {
         messageEl.textContent = 'Marca de agua guardada.';
         messageEl.className = 'message show success';

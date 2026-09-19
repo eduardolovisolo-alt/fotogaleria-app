@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FotoGalería Pro — Marca de agua</title>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="admin.html">Foto<span>Galería</span> Pro</a>
+    <nav>
+      <a href="admin.html">Galerías</a>
+      <a href="admin-watermark.html">Marca de agua</a>
+      <a href="admin-orders.html">Pedidos</a>
+      <a href="admin-messages.html">Mensajes</a>
+      <a href="dashboard.html">Mi cuenta</a>
+      <a href="#" id="logout-link">Cerrar sesión</a>
+    </nav>
+  </header>
+
+  <main class="admin-page">
+    <a href="admin.html" class="back-link">← Volver a mis galerías</a>
+    <div class="page-header">
+      <h1>Marca de agua</h1>
+    </div>
+    <p class="subtitle" style="margin-top:-12px; margin-bottom:22px;">Configuración global. En cada galería solo marcás si se aplica o no. Las originales quedan limpias.</p>
+
+    <div class="create-panel">
+      <div id="watermark-message" class="message"></div>
+      <form id="watermark-form">
+        <div class="field">
+          <label for="wm-text">Texto</label>
+          <input type="text" id="wm-text" maxlength="48" placeholder="FotoGalería Pro" />
+        </div>
+        <div class="inline-fields" style="margin-top:14px;">
+          <div class="field">
+            <label for="wm-design">Diseño</label>
+            <select id="wm-design">
+              <option value="text">Solo texto</option>
+              <option value="logo">Solo logo</option>
+              <option value="both">Logo + texto</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="wm-pattern">Patrón</label>
+            <select id="wm-pattern">
+              <option value="diagonal">Diagonal</option>
+              <option value="tile">Mosaico</option>
+              <option value="center">Al centro</option>
+              <option value="corners">En las esquinas</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="wm-texture">Textura</label>
+            <select id="wm-texture">
+              <option value="soft">Suave</option>
+              <option value="strong">Marcada</option>
+              <option value="outline">Contorno</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <label for="wm-logo">Subir logo / sello (PNG o WEBP)</label>
+          <input type="file" id="wm-logo" accept="image/png,image/webp,image/jpeg" />
+          <label class="checkbox-field" style="margin-top:8px;">
+            <input type="checkbox" id="wm-clear-logo" />
+            Quitar logo actual
+          </label>
+        </div>
+        <div class="watermark-preview-wrap">
+          <img id="wm-preview" alt="Vista previa de la marca de agua" />
+        </div>
+        <div style="margin-top:16px;">
+          <button type="submit" class="primary" id="wm-save-btn" style="width:auto; padding:11px 24px;">Guardar marca de agua</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script src="assets/js/api.js?v=20260919-ux2"></script>
+  <script src="assets/js/watermark-admin.js?v=20260919-ux2"></script>
+  <script>
+    const session = getSession();
+    if (!session) window.location.href = 'login.html';
+
+    document.getElementById('logout-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      clearSession();
+      window.location.href = 'index.html';
+    });
+
+    function showMessage(el, text, type) {
+      el.textContent = text;
+      el.className = `message show ${type}`;
+    }
+
+    (async () => {
+      try {
+        const { user } = await apiRequest('/api/auth/me', { token: session.token });
+        if (user.role !== 'admin') window.location.href = 'dashboard.html';
+      } catch {
+        clearSession();
+        window.location.href = 'login.html';
+      }
+    })();
+
+    bindWatermarkAdmin(session);
+  </script>
+</body>
+</html>

@@ -10,7 +10,8 @@
   <header class="topbar">
     <a class="brand" href="admin.html">Foto<span>Galería</span> Pro</a>
     <nav>
-      <a href="#marca-de-agua">Marca de agua</a>
+      <a href="admin.html">Galerías</a>
+      <a href="admin-watermark.html">Marca de agua</a>
       <a href="admin-orders.html">Pedidos</a>
       <a href="admin-messages.html">Mensajes</a>
       <a href="dashboard.html">Mi cuenta</a>
@@ -23,8 +24,12 @@
       <h1>Mis galerías</h1>
     </div>
 
-    <div class="create-panel">
-      <h2>Crear nueva galería</h2>
+    <div id="list-message" class="message"></div>
+    <div class="gallery-list" id="gallery-list"></div>
+    <p class="empty-state" id="empty-state" style="display:none; cursor:pointer;">Todavía no creaste ninguna galería. Tocá acá para crear una.</p>
+
+    <details class="settings-fold" id="create-fold" style="margin-top:18px;">
+      <summary>Crear nueva galería</summary>
       <div id="create-message" class="message"></div>
       <form id="create-form">
         <div class="field">
@@ -35,7 +40,7 @@
           <label for="gallery-author">Autor de las fotos</label>
           <input type="text" id="gallery-author" maxlength="150" placeholder="Ej: Patricio Lovisolo" />
         </div>
-        <div class="inline-fields">
+        <div class="inline-fields" style="margin-top:14px;">
           <label class="checkbox-field">
             <input type="checkbox" id="gallery-public" checked />
             Galería pública (sin contraseña)
@@ -55,72 +60,20 @@
           <label for="gallery-price">Precio por foto (opcional, en tu moneda)</label>
           <input type="number" id="gallery-price" min="0" step="0.01" placeholder="Ej: 1500 (dejar vacío si no vendés fotos)" />
         </div>
+        <div class="inline-fields" style="margin-top:14px;">
+          <label class="checkbox-field">
+            <input type="checkbox" id="gallery-watermark" checked />
+            Aplicar marca de agua
+          </label>
+        </div>
         <div style="margin-top:16px;">
           <button type="submit" class="primary" id="create-btn" style="width:auto; padding:11px 24px;">Crear galería</button>
         </div>
       </form>
-    </div>
-
-    <div class="create-panel" id="marca-de-agua">
-      <h2>Marca de agua</h2>
-      <p class="subtitle" style="margin-top:-6px;">Configuración general. En cada galería solo elegís si se aplica o no. Las originales quedan limpias.</p>
-      <div id="watermark-message" class="message"></div>
-      <form id="watermark-form">
-        <div class="field">
-          <label for="wm-text">Texto</label>
-          <input type="text" id="wm-text" maxlength="48" placeholder="FotoGalería Pro" />
-        </div>
-        <div class="inline-fields" style="margin-top:14px;">
-          <div class="field">
-            <label for="wm-design">Diseño</label>
-            <select id="wm-design">
-              <option value="text">Solo texto</option>
-              <option value="logo">Solo logo</option>
-              <option value="both">Logo + texto</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="wm-pattern">Patrón</label>
-            <select id="wm-pattern">
-              <option value="diagonal">Diagonal</option>
-              <option value="tile">Mosaico</option>
-              <option value="center">Al centro</option>
-              <option value="corners">En las esquinas</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="wm-texture">Textura</label>
-            <select id="wm-texture">
-              <option value="soft">Suave</option>
-              <option value="strong">Marcada</option>
-              <option value="outline">Contorno</option>
-            </select>
-          </div>
-        </div>
-        <div class="field" style="margin-top:14px;">
-          <label for="wm-logo">Subir logo / sello (PNG o WEBP)</label>
-          <input type="file" id="wm-logo" accept="image/png,image/webp,image/jpeg" />
-          <label class="checkbox-field" style="margin-top:8px;">
-            <input type="checkbox" id="wm-clear-logo" />
-            Quitar logo actual
-          </label>
-        </div>
-        <div class="watermark-preview-wrap">
-          <img id="wm-preview" alt="Vista previa de la marca de agua" />
-        </div>
-        <div style="margin-top:16px;">
-          <button type="submit" class="primary" id="wm-save-btn" style="width:auto; padding:11px 24px;">Guardar marca de agua</button>
-        </div>
-      </form>
-    </div>
-
-    <div id="list-message" class="message"></div>
-    <div class="gallery-list" id="gallery-list"></div>
-    <p class="empty-state" id="empty-state" style="display:none;">Todavía no creaste ninguna galería.</p>
+    </details>
   </main>
 
-  <script src="assets/js/api.js?v=20260919-ux"></script>
-  <script src="assets/js/watermark-admin.js?v=20260919-wm"></script>
+  <script src="assets/js/api.js?v=20260919-ux2"></script>
   <script>
     const session = getSession();
     if (!session) window.location.href = 'login.html';
@@ -145,6 +98,7 @@
 
     const publicCheckbox = document.getElementById('gallery-public');
     const privateFields = document.getElementById('private-fields');
+    const createFold = document.getElementById('create-fold');
     publicCheckbox.addEventListener('change', () => {
       privateFields.style.display = publicCheckbox.checked ? 'none' : 'block';
     });
@@ -223,18 +177,23 @@
         const password = document.getElementById('gallery-password').value;
         const accessUsername = document.getElementById('gallery-username').value.trim();
         const pricePerPhoto = document.getElementById('gallery-price').value;
+        const applyWatermark = document.getElementById('gallery-watermark').checked;
 
         await apiRequest('/api/galleries', {
           method: 'POST',
           token: session.token,
-          body: { name, author, isPublic, password, accessUsername, pricePerPhoto },
+          body: { name, author, isPublic, password, accessUsername, pricePerPhoto, applyWatermark },
         });
 
         document.getElementById('create-form').reset();
+        document.getElementById('gallery-watermark').checked = true;
+        publicCheckbox.checked = true;
         privateFields.style.display = 'none';
-        showMessage(messageEl, 'Galería creada.', 'success');
+        createFold.open = false;
+        showMessage(listMessage, 'Galería creada.', 'success');
         loadGalleries();
       } catch (err) {
+        createFold.open = true;
         showMessage(messageEl, err.message, 'error');
       } finally {
         btn.disabled = false;
@@ -242,9 +201,13 @@
       }
     });
 
+    emptyEl.addEventListener('click', () => {
+      createFold.open = true;
+      document.getElementById('gallery-name').focus();
+    });
+
     guardAdmin();
     loadGalleries();
-    bindWatermarkAdmin(session);
   </script>
 </body>
 </html>
