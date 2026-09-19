@@ -130,27 +130,61 @@ async function preview(req, res) {
   }
 }
 
-async function applyToPhoto(photo, settings) {
-  const original = await r2.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key: photo.original_key }));
-  const originalBuffer = await streamToBuffer(original.Body);
+async function getObjectBuffer(key) {
+  const object = await r2.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
+  return streamToBuffer(object.Body);
+}
 
-  const thumbnailRaw = await sharp(originalBuffer)
+async function loadSourceBuffer(photo) {
+  const keys = [photo.original_key, photo.preview_key, photo.thumbnail_key].filter(Boolean);
+  let lastError;
+  for (const key of keys) {
+    try {
+      return await getObjectBuffer(key);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  const name = photo.file_name || photo.id;
+  throw new Error(`No se pudo leer ${name} en el almacenamiento${lastError?.message ? `: ${lastError.message}` : '.'}`);
+}
+
+function contentTypeFor(photo) {
+  const name = String(photo.file_name || '').toLowerCase();
+  if (name.endsWith('.png')) return 'image/png';
+  if (name.endsWith('.webp')) return 'image/webp';
+  return 'image/jpeg';
+}
+
+async function encodeForPhoto(buffer, photo) {
+  const type = contentTypeFor(photo);
+  if (type === 'image/png') return sharp(buffer).png().toBuffer();
+  if (type === 'image/webp') return sharp(buffer).webp({ quality: 84 }).toBuffer();
+  return sharp(buffer).jpeg({ quality: 84 }).toBuffer();
+}
+
+async function applyToPhoto(photo, settings) {
+  if (!photo.thumbnail_key) {
+    throw new Error(`La foto ${photo.file_name || photo.id} no tiene miniatura.`);
+  }
+
+  const sourceBuffer = await loadSourceBuffer(photo);
+  const thumbnailRaw = await sharp(sourceBuffer)
+    .rotate()
     .resize({ width: THUMBNAIL_WIDTH, withoutEnlargement: true })
     .toBuffer();
-  const previewRaw = await sharp(originalBuffer)
+  const previewRaw = await sharp(sourceBuffer)
+    .rotate()
     .resize({ width: PREVIEW_WIDTH, withoutEnlargement: true })
     .toBuffer();
 
-  const [thumbnailBuffer, previewBuffer] = await Promise.all([
+  const [thumbnailMarked, previewMarked] = await Promise.all([
     watermarkBuffer(thumbnailRaw, settings),
     watermarkBuffer(previewRaw, settings),
   ]);
-
-  const contentType = photo.file_name?.toLowerCase().endsWith('.png')
-    ? 'image/png'
-    : photo.file_name?.toLowerCase().endsWith('.webp')
-      ? 'image/webp'
-      : 'image/jpeg';
+  const thumbnailBuffer = await encodeForPhoto(thumbnailMarked, photo);
+  const previewBuffer = await encodeForPhoto(previewMarked, photo);
+  const contentType = contentTypeFor(photo);
 
   await r2.send(new PutObjectCommand({
     Bucket: BUCKET_NAME,
@@ -173,8 +207,17 @@ async function reprocessGallery(req, res) {
     const gallery = req.gallery;
     const settings = await settingsForAdmin(gallery.admin_id);
     const photos = await photoModel.findByGallery(gallery.id);
+    if (!photos.length) {
+      return res.status(400).json({
+        error: 'Esta galería no tiene fotos para marcar.',
+        done: 0,
+        failed: 0,
+      });
+    }
+
     let done = 0;
     let failed = 0;
+    let lastError = '';
     for (const photo of photos) {
       try {
         await applyToPhoto(photo, settings);
@@ -182,12 +225,27 @@ async function reprocessGallery(req, res) {
       } catch (err) {
         console.error('reprocess photo error:', err);
         failed += 1;
+        lastError = `${photo.file_name || photo.id}: ${err.message || 'error desconocido'}`;
       }
     }
-    res.json({ message: `Marca de agua aplicada a ${done} foto(s).`, done, failed });
+
+    if (done === 0) {
+      return res.status(500).json({
+        error: `No se pudo aplicar la marca de agua a ninguna foto. ${lastError}`.trim(),
+        done,
+        failed,
+      });
+    }
+
+    const extra = failed ? ` ${failed} fallaron. ${lastError}` : '';
+    res.json({
+      message: `Marca de agua aplicada a ${done} foto(s).${extra}`.trim(),
+      done,
+      failed,
+    });
   } catch (err) {
     console.error('reprocess gallery error:', err);
-    res.status(500).json({ error: 'Error al reaplicar la marca de agua.' });
+    res.status(500).json({ error: err.message || 'Error al reaplicar la marca de agua.' });
   }
 }
 
