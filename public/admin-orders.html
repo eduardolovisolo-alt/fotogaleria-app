@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FotoGalería Pro — Pedidos</title>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="admin.html">Foto<span>Galería</span> Pro</a>
+    <nav>
+      <a href="admin.html">Galerías</a>
+      <a href="admin-messages.html">Mensajes</a>
+      <a href="dashboard.html">Mi cuenta</a>
+      <a href="#" id="logout-link">Cerrar sesión</a>
+    </nav>
+  </header>
+
+  <main class="admin-page">
+    <div class="page-header">
+      <h1>Pedidos</h1>
+    </div>
+
+    <div id="orders-box" class="empty-state">Cargando...</div>
+  </main>
+
+  <script src="assets/js/api.js"></script>
+  <script>
+    const session = getSession();
+    if (!session) window.location.href = 'login.html';
+
+    document.getElementById('logout-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      clearSession();
+      window.location.href = 'index.html';
+    });
+
+    const STATUS_LABELS = { pending: 'Pendiente', paid: 'Pagado', cancelled: 'Cancelado' };
+
+    async function loadOrders() {
+      const box = document.getElementById('orders-box');
+      try {
+        const { user } = await apiRequest('/api/auth/me', { token: session.token });
+        if (user.role !== 'admin') {
+          window.location.href = 'dashboard.html';
+          return;
+        }
+
+        const { orders } = await apiRequest('/api/orders', { token: session.token });
+        if (!orders.length) {
+          box.textContent = 'Todavía no recibiste pedidos.';
+          return;
+        }
+
+        box.className = '';
+        box.innerHTML = orders.map((o) => `
+          <div class="order-row">
+            <div>
+              <strong>${o.client_name}</strong>
+              <span class="badge ${o.status}">${STATUS_LABELS[o.status] || o.status}</span>
+              <br/>
+              <span class="meta">${o.gallery_name} · ${o.client_email}${o.client_phone ? ` · ${o.client_phone}` : ''}</span><br/>
+              <span class="meta">${o.photo_count} foto(s) · $${Number(o.total_amount).toLocaleString('es-AR')} · ${new Date(o.created_at).toLocaleString('es-AR')}</span>
+            </div>
+            <div class="gallery-row-actions">
+              <a class="secondary" href="admin-gallery.html?slug=${o.gallery_slug}">Ver galería</a>
+              <select data-id="${o.id}" class="order-status">
+                <option value="pending" ${o.status === 'pending' ? 'selected' : ''}>Pendiente</option>
+                <option value="paid" ${o.status === 'paid' ? 'selected' : ''}>Pagado</option>
+                <option value="cancelled" ${o.status === 'cancelled' ? 'selected' : ''}>Cancelado</option>
+              </select>
+            </div>
+          </div>
+        `).join('');
+
+        box.querySelectorAll('.order-status').forEach((select) => {
+          select.addEventListener('change', () => updateOrderStatus(select.dataset.id, select.value));
+        });
+      } catch (err) {
+        box.textContent = err.message || 'No se pudieron cargar los pedidos.';
+      }
+    }
+
+    async function updateOrderStatus(orderId, status) {
+      try {
+        await apiRequest(`/api/orders/${orderId}`, {
+          method: 'PUT',
+          token: session.token,
+          body: { status },
+        });
+        loadOrders();
+      } catch (err) {
+        alert(err.message);
+        loadOrders();
+      }
+    }
+
+    loadOrders();
+  </script>
+</body>
+</html>

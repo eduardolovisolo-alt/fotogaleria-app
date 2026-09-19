@@ -8,8 +8,9 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">Foto<span>Galería</span> Pro</div>
+    <a class="brand" href="admin.html">Foto<span>Galería</span> Pro</a>
     <nav>
+      <a href="admin-orders.html">Pedidos</a>
       <a href="admin-messages.html">Mensajes</a>
       <a href="dashboard.html">Mi cuenta</a>
       <a href="#" id="logout-link">Cerrar sesión</a>
@@ -57,7 +58,7 @@
   <script src="assets/js/api.js"></script>
   <script>
     const session = getSession();
-    if (!session) window.location.href = 'index.html';
+    if (!session) window.location.href = 'login.html';
 
     document.getElementById('logout-link').addEventListener('click', (e) => {
       e.preventDefault();
@@ -73,7 +74,7 @@
         }
       } catch {
         clearSession();
-        window.location.href = 'index.html';
+        window.location.href = 'login.html';
       }
     }
 

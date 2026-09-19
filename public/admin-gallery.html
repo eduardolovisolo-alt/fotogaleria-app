@@ -8,9 +8,11 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">Foto<span>Galería</span> Pro</div>
+    <a class="brand" href="admin.html">Foto<span>Galería</span> Pro</a>
     <nav>
-      <a href="admin.html">Mis galerías</a>
+      <a href="admin.html">Galerías</a>
+      <a href="admin-orders.html">Pedidos</a>
+      <a href="admin-messages.html">Mensajes</a>
       <a href="#" id="logout-link">Cerrar sesión</a>
     </nav>
   </header>
@@ -77,7 +79,7 @@
   <script src="assets/js/api.js"></script>
   <script>
     const session = getSession();
-    if (!session) window.location.href = 'index.html';
+    if (!session) window.location.href = 'login.html';
 
     const params = new URLSearchParams(window.location.search);
     const slug = params.get('slug');
@@ -289,7 +291,10 @@
         box.innerHTML = orders.map((o) => `
           <div class="order-row">
             <div>
-              <strong>${o.client_name}</strong> — ${o.client_email}${o.client_phone ? ` · ${o.client_phone}` : ''}<br/>
+              <strong>${o.client_name}</strong>
+              <span class="badge ${o.status}">${STATUS_LABELS[o.status] || o.status}</span>
+              <br/>
+              <span class="meta">${o.client_email}${o.client_phone ? ` · ${o.client_phone}` : ''}</span><br/>
               <span class="meta">${o.photo_count} foto(s) · $${Number(o.total_amount).toLocaleString('es-AR')} · ${new Date(o.created_at).toLocaleString('es-AR')}</span>
             </div>
             <select data-id="${o.id}" class="order-status">

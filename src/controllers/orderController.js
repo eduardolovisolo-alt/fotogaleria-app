@@ -1,8 +1,18 @@
 const orderModel = require('../models/orderModel');
 const galleryModel = require('../models/galleryModel');
 const selectionModel = require('../models/selectionModel');
+const photoModel = require('../models/photoModel');
+const userModel = require('../models/userModel');
+const {
+  sendOrderNotificationToPhotographer,
+  sendOrderConfirmationToClient,
+} = require('../utils/mailer');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function appBaseUrl(req) {
+  return (process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+}
 
 async function createOrder(req, res) {
   try {
@@ -30,6 +40,37 @@ async function createOrder(req, res) {
       photoIds,
       pricePerPhoto: gallery.price_per_photo,
     });
+
+    try {
+      const photos = await photoModel.findByIds(photoIds);
+      const photoNames = photos.map((p) => p.file_name);
+      const photographer = await userModel.findById(gallery.admin_id);
+      const notifyEmail = process.env.ADMIN_NOTIFY_EMAIL || photographer?.email;
+
+      if (notifyEmail) {
+        await sendOrderNotificationToPhotographer({
+          to: notifyEmail,
+          photographerName: photographer?.name,
+          clientName: order.client_name,
+          clientEmail: order.client_email,
+          clientPhone: order.client_phone,
+          order,
+          gallery,
+          photoNames,
+          adminUrl: `${appBaseUrl(req)}/admin-gallery.html?slug=${gallery.slug}`,
+        });
+      }
+
+      await sendOrderConfirmationToClient({
+        to: order.client_email,
+        clientName: order.client_name,
+        order,
+        gallery,
+        photoNames,
+      });
+    } catch (notifyErr) {
+      console.error('order notify error:', notifyErr);
+    }
 
     res.status(201).json({ order });
   } catch (err) {

@@ -15,6 +15,10 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
+app.get('/reset-password', (req, res) => {
+  const query = new URLSearchParams(req.query).toString();
+  res.redirect(`/reset-password.html${query ? `?${query}` : ''}`);
+});
 app.use('/api/auth', authRoutes);
 app.use('/api/galleries', galleryRoutes);
 app.use('/api/contact', contactRoutes);

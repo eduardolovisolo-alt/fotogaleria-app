@@ -3,72 +3,90 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>FotoGalería Pro — Iniciar sesión</title>
+<title>FotoGalería Pro — Galerías privadas de fotos</title>
 <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">Foto<span>Galería</span> Pro</div>
+    <a class="brand" href="index.html">Foto<span>Galería</span> Pro</a>
     <nav>
+      <a href="#como-funciona">Cómo funciona</a>
       <a href="contact.html">Contacto</a>
-      <a href="register.html">Crear cuenta</a>
+      <a href="login.html" id="login-nav">Ingresar</a>
     </nav>
   </header>
 
-  <main class="page">
-    <div class="card">
-      <h1>Iniciar sesión</h1>
-      <p class="subtitle">Accedé a tu galería de fotos</p>
+  <main>
+    <section class="hero">
+      <p class="hero-kicker">Para fotógrafos y sus clientes</p>
+      <h1>Tus sesiones, en una galería privada lista para elegir y pedir.</h1>
+      <p class="hero-lead">Subí las fotos, compartí un link y dejá que tus clientes elijan sus favoritas. Pedidos, contacto y protección de las imágenes, en un solo lugar.</p>
+      <div class="hero-actions">
+        <a class="cta-primary" href="contact.html">Quiero mi galería</a>
+        <a class="cta-secondary" href="login.html" id="hero-login">Ya soy fotógrafo — Ingresar</a>
+      </div>
+    </section>
 
-      <div id="message" class="message"></div>
+    <section class="home-section" id="como-funciona">
+      <h2>Cómo funciona</h2>
+      <div class="steps-grid">
+        <article class="step-card">
+          <span class="step-num">01</span>
+          <h3>El fotógrafo sube la sesión</h3>
+          <p>Creá una galería, definí si es pública o con contraseña, y subí las fotos de a muchas o por carpeta.</p>
+        </article>
+        <article class="step-card">
+          <span class="step-num">02</span>
+          <h3>El cliente elige sin cuenta</h3>
+          <p>Recibe el link, mira las fotos en grande y selecciona las que quiere. No necesita registrarse.</p>
+        </article>
+        <article class="step-card">
+          <span class="step-num">03</span>
+          <h3>Confirmás el pedido</h3>
+          <p>El cliente deja sus datos y vos recibís el pedido en el panel, con aviso por email para no perderlo.</p>
+        </article>
+      </div>
+    </section>
 
-      <form id="login-form">
-        <div class="field">
-          <label for="email">Email</label>
-          <input type="email" id="email" required autocomplete="email" />
-        </div>
-        <div class="field">
-          <label for="password">Contraseña</label>
-          <input type="password" id="password" required autocomplete="current-password" />
-        </div>
-        <button type="submit" class="primary" id="submit-btn">Ingresar</button>
-      </form>
-
-      <p class="alt-action">¿No tenés cuenta? <a href="register.html">Registrate</a></p>
-    </div>
+    <section class="home-section">
+      <div class="split-grid">
+        <article class="split-card">
+          <h2>Si sos fotógrafo</h2>
+          <ul>
+            <li>Galerías privadas con contraseña</li>
+            <li>Precio por foto y pedidos con estado</li>
+            <li>Marca de agua y bloqueo de descarga casual</li>
+            <li>Mensajes de contacto y WhatsApp</li>
+          </ul>
+          <a class="cta-secondary" href="login.html" id="split-login">Ir al panel</a>
+        </article>
+        <article class="split-card">
+          <h2>Si te compartieron un link</h2>
+          <p>Abrí el enlace que te mandó el fotógrafo. Ahí vas a ver tu sesión, elegir las fotos y confirmar el pedido.</p>
+          <p class="muted">Si no tenés el link, escribinos y te ayudamos a encontrarlo.</p>
+          <a class="cta-secondary" href="contact.html">Contacto</a>
+        </article>
+      </div>
+    </section>
   </main>
+
+  <footer class="home-footer">
+    <span>FotoGalería Pro</span>
+    <a href="contact.html">Contacto</a>
+    <a href="login.html">Ingresar</a>
+  </footer>
 
   <script src="assets/js/api.js"></script>
   <script>
-    const form = document.getElementById('login-form');
-    const messageEl = document.getElementById('message');
-    const submitBtn = document.getElementById('submit-btn');
-
-    const existing = getSession();
-    if (existing) window.location.href = 'dashboard.html';
-
-    function showMessage(text, type) {
-      messageEl.textContent = text;
-      messageEl.className = `message show ${type}`;
+    const session = getSession();
+    if (session) {
+      const dest = session.user?.role === 'admin' ? 'admin.html' : 'dashboard.html';
+      document.getElementById('login-nav').textContent = 'Ir al panel';
+      document.getElementById('login-nav').href = dest;
+      document.getElementById('hero-login').textContent = 'Ir a mi panel';
+      document.getElementById('hero-login').href = dest;
+      document.getElementById('split-login').href = dest;
     }
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Ingresando...';
-
-      try {
-        const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value;
-        const data = await apiRequest('/api/auth/login', { method: 'POST', body: { email, password } });
-        saveSession(data);
-        window.location.href = 'dashboard.html';
-      } catch (err) {
-        showMessage(err.message, 'error');
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Ingresar';
-      }
-    });
   </script>
 </body>
 </html>

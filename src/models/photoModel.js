@@ -22,8 +22,18 @@ async function findByGallery(galleryId) {
   return rows;
 }
 
+async function findByIds(ids) {
+  if (!ids.length) return [];
+  const placeholders = ids.map(() => '?').join(',');
+  const [rows] = await pool.query(
+    `SELECT * FROM photos WHERE id IN (${placeholders})`,
+    ids
+  );
+  return rows;
+}
+
 async function deleteById(id) {
   await pool.query('DELETE FROM photos WHERE id = ?', [id]);
 }
 
-module.exports = { create, findById, findByGallery, deleteById };
+module.exports = { create, findById, findByGallery, findByIds, deleteById };

@@ -1,7 +1,7 @@
 const API_BASE_URL = window.location.origin;
 
 const WHATSAPP_NUMBER = '5491130108299';
-const WHATSAPP_ADMIN_PAGES = ['/dashboard.html', '/admin.html', '/admin-gallery.html', '/admin-messages.html'];
+const WHATSAPP_ADMIN_PAGES = ['/dashboard.html', '/admin.html', '/admin-gallery.html', '/admin-messages.html', '/admin-orders.html'];
 
 function injectWhatsAppButton() {
   if (WHATSAPP_ADMIN_PAGES.includes(window.location.pathname)) return;
