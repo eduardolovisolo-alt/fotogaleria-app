@@ -92,6 +92,7 @@
     const params = new URLSearchParams(window.location.search);
     const slug = params.get('slug');
     if (!slug) window.location.href = 'admin.html';
+    const galleryApi = `/api/galleries/${encodeURIComponent(slug)}`;
 
     let currentGallery = null;
 
@@ -190,7 +191,7 @@
 
     async function loadPhotos() {
       try {
-        const { photos } = await apiRequest(`/api/galleries/${slug}/photos`, { token: session.token });
+        const { photos } = await apiRequest(`${galleryApi}/photos`, { token: session.token });
         renderPhotos(photos);
       } catch (err) {
         showMessage(uploadMessage, err.message, 'error');
@@ -214,7 +215,7 @@
 
     async function deletePhoto(id) {
       try {
-        await apiRequest(`/api/galleries/${slug}/photos/${id}`, { method: 'DELETE', token: session.token });
+        await apiRequest(`${galleryApi}/photos/${id}`, { method: 'DELETE', token: session.token });
         loadPhotos();
       } catch (err) {
         showMessage(uploadMessage, err.message, 'error');
@@ -230,8 +231,8 @@
     const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
     function isAllowedImage(file) {
-      if (ALLOWED_TYPES.includes(file.type)) return true;
-      return /\.(jpe?g|png|webp)$/i.test(file.name || '');
+      if (ALLOWED_TYPES.includes(file.type) || ['image/heic', 'image/heif'].includes(file.type)) return true;
+      return /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name || '');
     }
 
     function openPicker(input) {
@@ -247,7 +248,7 @@
       btn.disabled = true;
       btn.textContent = 'Aplicando...';
       try {
-        const data = await apiRequest(`/api/galleries/${slug}/reprocess-watermark`, {
+        const data = await apiRequest(`${galleryApi}/reprocess-watermark`, {
           method: 'POST',
           token: session.token,
         });
@@ -266,6 +267,28 @@
       e.preventDefault();
     });
 
+    async function preparePhotoFile(file) {
+      const maxBytes = 3.5 * 1024 * 1024;
+      const maxEdge = 3500;
+      const alreadyOk = file.size <= maxBytes && ALLOWED_TYPES.includes(file.type);
+      if (alreadyOk) return file;
+
+      try {
+        const bitmap = await createImageBitmap(file);
+        const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        bitmap.close();
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.88));
+        if (!blob) return file;
+        return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+      } catch {
+        return file;
+      }
+    }
+
     async function uploadFiles(fileList) {
       const selected = Array.from(fileList || []);
       if (!selected.length) return;
@@ -280,16 +303,18 @@
       progressBox.style.display = 'block';
       let done = 0;
       let failed = 0;
+      const errors = [];
 
       for (const file of files) {
-        progressText.textContent = `Subiendo ${done + 1} de ${files.length}: ${file.name}`;
+        progressText.textContent = `Preparando ${done + 1} de ${files.length}: ${file.name}`;
         progressFill.style.width = `${Math.round((done / files.length) * 100)}%`;
 
-        const formData = new FormData();
-        formData.append('photo', file);
-
         try {
-          await apiRequest(`/api/galleries/${slug}/photos`, {
+          const ready = await preparePhotoFile(file);
+          progressText.textContent = `Subiendo ${done + 1} de ${files.length}: ${ready.name}`;
+          const formData = new FormData();
+          formData.append('photo', ready);
+          await apiRequest(`${galleryApi}/photos`, {
             method: 'POST',
             body: formData,
             token: session.token,
@@ -297,6 +322,7 @@
           });
         } catch (err) {
           failed += 1;
+          if (err.message && !errors.includes(err.message)) errors.push(err.message);
         }
         done += 1;
       }
@@ -306,7 +332,12 @@
         ? `Listo: ${done - failed} de ${done} fotos subidas (${failed} fallaron).`
         : `${done} foto${done === 1 ? '' : 's'} subida${done === 1 ? '' : 's'} correctamente.`;
 
-      showMessage(uploadMessage, failed ? 'Algunas fotos no se pudieron subir.' : 'Fotos subidas.', failed ? 'error' : 'success');
+      const errorText = errors.length ? ` ${errors.join(' ')}` : '';
+      showMessage(
+        uploadMessage,
+        failed ? `Algunas fotos no se pudieron subir.${errorText}` : 'Fotos subidas.',
+        failed ? 'error' : 'success'
+      );
       photoInput.value = '';
       folderInput.value = '';
       uploadBtn.disabled = false;

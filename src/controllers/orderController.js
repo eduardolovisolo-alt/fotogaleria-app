@@ -8,6 +8,8 @@ const {
   sendOrderConfirmationToClient,
 } = require('../utils/mailer');
 
+const { sameId } = require('../utils/ids');
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function appBaseUrl(req) {
@@ -106,7 +108,7 @@ async function createOrder(req, res) {
 async function listGalleryOrders(req, res) {
   try {
     const gallery = await galleryModel.findById(req.params.id);
-    if (!gallery || gallery.admin_id !== req.user.sub) {
+    if (!gallery || !sameId(gallery.admin_id, req.user.sub)) {
       return res.status(404).json({ error: 'Galería no encontrada.' });
     }
     const orders = await withItems(await orderModel.findByGallery(gallery.id));
@@ -134,7 +136,7 @@ async function updateOrderStatus(req, res) {
       return res.status(404).json({ error: 'Pedido no encontrado.' });
     }
     const gallery = await galleryModel.findById(order.gallery_id);
-    if (!gallery || gallery.admin_id !== req.user.sub) {
+    if (!gallery || !sameId(gallery.admin_id, req.user.sub)) {
       return res.status(404).json({ error: 'Pedido no encontrado.' });
     }
 

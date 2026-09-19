@@ -1,5 +1,6 @@
 const galleryModel = require('../models/galleryModel');
 const { verifyToken } = require('../utils/jwt');
+const { sameId } = require('../utils/ids');
 
 async function loadGallery(req, res, next) {
   const gallery = await galleryModel.findBySlug(req.params.slug);
@@ -17,7 +18,7 @@ function detectGalleryOwner(req) {
   if (scheme === 'Bearer' && bearerToken) {
     try {
       const payload = verifyToken(bearerToken);
-      if (payload.sub === gallery.admin_id) {
+      if (sameId(payload.sub, gallery.admin_id)) {
         req.isGalleryOwner = true;
       }
     } catch {

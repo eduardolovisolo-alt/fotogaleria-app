@@ -27,16 +27,28 @@ async function loadLogoBuffer(logoKey) {
 }
 
 async function settingsForAdmin(adminId) {
-  const row = await watermarkModel.findByAdmin(adminId);
-  const logoBuffer = await loadLogoBuffer(row.logo_key);
-  return {
-    text: row.text,
-    pattern: row.pattern,
-    texture: row.texture,
-    design: row.design,
-    logo_key: row.logo_key,
-    logoBuffer,
-  };
+  try {
+    const row = await watermarkModel.findByAdmin(adminId);
+    const logoBuffer = await loadLogoBuffer(row.logo_key);
+    return {
+      text: row.text,
+      pattern: row.pattern,
+      texture: row.texture,
+      design: row.design,
+      logo_key: row.logo_key,
+      logoBuffer,
+    };
+  } catch (err) {
+    console.error('watermark settings fallback:', err);
+    return {
+      text: 'FotoGalería Pro',
+      pattern: 'diagonal',
+      texture: 'strong',
+      design: 'text',
+      logo_key: null,
+      logoBuffer: null,
+    };
+  }
 }
 
 function toPublic(row) {
