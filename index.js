@@ -8,6 +8,7 @@ const authRoutes = require('./src/routes/authRoutes');
 const galleryRoutes = require('./src/routes/galleryRoutes');
 const contactRoutes = require('./src/routes/contactRoutes');
 const orderRoutes = require('./src/routes/orderRoutes');
+const watermarkRoutes = require('./src/routes/watermarkRoutes');
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/galleries', galleryRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/watermark', watermarkRoutes);
 
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {

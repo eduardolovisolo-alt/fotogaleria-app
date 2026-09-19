@@ -61,6 +61,7 @@
         <div class="upload-actions">
           <button type="submit" class="primary" id="upload-btn">Subir fotos</button>
           <button type="button" class="secondary" id="folder-btn">Subir carpeta</button>
+          <button type="button" class="secondary" id="reprocess-btn">Aplicar marca de agua</button>
         </div>
         <input type="file" id="folder-input" webkitdirectory directory multiple style="display:none;" />
       </form>
@@ -228,6 +229,24 @@
     const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
     document.getElementById('folder-btn').addEventListener('click', () => folderInput.click());
+    document.getElementById('reprocess-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('reprocess-btn');
+      btn.disabled = true;
+      btn.textContent = 'Aplicando...';
+      try {
+        const data = await apiRequest(`/api/galleries/${slug}/reprocess-watermark`, {
+          method: 'POST',
+          token: session.token,
+        });
+        showMessage(uploadMessage, data.message || 'Marca de agua aplicada.', 'success');
+        loadPhotos();
+      } catch (err) {
+        showMessage(uploadMessage, err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Aplicar marca de agua';
+      }
+    });
     folderInput.addEventListener('change', () => uploadFiles(folderInput.files));
 
     document.getElementById('upload-form').addEventListener('submit', (e) => {

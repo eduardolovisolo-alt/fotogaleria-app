@@ -3,6 +3,7 @@ const galleryController = require('../controllers/galleryController');
 const photoController = require('../controllers/photoController');
 const selectionController = require('../controllers/selectionController');
 const orderController = require('../controllers/orderController');
+const watermarkController = require('../controllers/watermarkController');
 const { protect, requireRole } = require('../middleware/authMiddleware');
 const { loadGallery, requireGalleryAccess } = require('../middleware/galleryAccessMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -28,6 +29,14 @@ router.post(
   requireGalleryOwner,
   upload.single('photo'),
   photoController.uploadPhoto
+);
+router.post(
+  '/:slug/reprocess-watermark',
+  protect,
+  requireRole('admin'),
+  loadGallery,
+  requireGalleryOwner,
+  watermarkController.reprocessGallery
 );
 router.delete(
   '/:slug/photos/:photoId',
