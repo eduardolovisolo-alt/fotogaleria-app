@@ -1,14 +1,63 @@
 const API_BASE_URL = window.location.origin;
 
 const WHATSAPP_NUMBER = '5491130108299';
-const WHATSAPP_ADMIN_PAGES = ['/dashboard.html', '/admin.html', '/admin-gallery.html', '/admin-messages.html'];
+const WHATSAPP_ADMIN_PAGES = ['/dashboard.html', '/admin.html', '/admin-gallery.html', '/admin-messages.html', '/admin-orders.html', '/checkout.html'];
+
+function toWhatsAppNumber(phone) {
+  let digits = String(phone || '').replace(/\D/g, '');
+  if (!digits) return null;
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.startsWith('54')) return digits;
+  if (digits.startsWith('0')) digits = digits.slice(1);
+  if (digits.length === 10) return `549${digits}`;
+  return `54${digits}`;
+}
+
+function whatsappHref(text, number = WHATSAPP_NUMBER) {
+  const target = number || WHATSAPP_NUMBER;
+  return `https://wa.me/${target}?text=${encodeURIComponent(text)}`;
+}
+
+function formatMoneyAR(amount) {
+  return Number(amount || 0).toLocaleString('es-AR');
+}
+
+function buildClientOrderWhatsAppUrl({ order, galleryName, photoNames, clientName, clientEmail, clientPhone }) {
+  const names = photoNames || [];
+  const photoLines = names.length
+    ? names.map((name) => `• ${name}`).join('\n')
+    : `• ${order.photo_count} foto(s)`;
+  const total = Number(order.total_amount) > 0 ? `\nTotal: $${formatMoneyAR(order.total_amount)}` : '';
+  const text = [
+    'Hola! Quiero confirmar este pedido:',
+    '',
+    `Pedido #${order.id}`,
+    `Galería: ${galleryName}`,
+    `Fotos (${order.photo_count}):`,
+    photoLines,
+    total,
+    '',
+    `Nombre: ${clientName}`,
+    `Email: ${clientEmail}`,
+    clientPhone ? `WhatsApp: ${clientPhone}` : null,
+  ].filter(Boolean).join('\n');
+
+  return whatsappHref(text);
+}
+
+function buildPhotographerReplyWhatsAppUrl(order, galleryName) {
+  const number = toWhatsAppNumber(order.client_phone);
+  if (!number) return null;
+  const text = `Hola ${order.client_name}! Te escribo por tu pedido #${order.id} de ${galleryName} (${order.photo_count} foto${order.photo_count === 1 ? '' : 's'}).`;
+  return whatsappHref(text, number);
+}
 
 function injectWhatsAppButton() {
   if (WHATSAPP_ADMIN_PAGES.includes(window.location.pathname)) return;
 
   const link = document.createElement('a');
   link.className = 'whatsapp-float';
-  link.href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Hola! Vengo de FotoGalería Pro.')}`;
+  link.href = whatsappHref('Hola! Vengo de FotoGalería Pro.');
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
   link.setAttribute('aria-label', 'Escribinos por WhatsApp');

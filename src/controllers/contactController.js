@@ -1,6 +1,21 @@
 const contactModel = require('../models/contactModel');
+const userModel = require('../models/userModel');
+const { sendContactNotification } = require('../utils/mailer');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function notifyAdmins(payload) {
+  const recipients = new Set();
+  if (process.env.ADMIN_NOTIFY_EMAIL) {
+    recipients.add(process.env.ADMIN_NOTIFY_EMAIL);
+  }
+  const admins = await userModel.findAdmins();
+  admins.forEach((admin) => {
+    if (admin.email) recipients.add(admin.email);
+  });
+
+  await Promise.all([...recipients].map((to) => sendContactNotification({ to, ...payload })));
+}
 
 async function submit(req, res) {
   try {
@@ -14,6 +29,16 @@ async function submit(req, res) {
     }
 
     await contactModel.create({ name: name.trim(), email: email.trim(), phone, message: message.trim() });
+    try {
+      await notifyAdmins({
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone ? phone.trim() : '',
+        message: message.trim(),
+      });
+    } catch (notifyErr) {
+      console.error('contact notify error:', notifyErr);
+    }
     res.status(201).json({ message: 'Mensaje enviado. Te vamos a responder a la brevedad.' });
   } catch (err) {
     console.error('contact submit error:', err);

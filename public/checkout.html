@@ -8,7 +8,7 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">Foto<span>Galería</span> Pro</div>
+    <a class="brand" href="index.html">Foto<span>Galería</span> Pro</a>
     <nav>
       <a href="#" id="back-link">← Volver a la galería</a>
     </nav>
@@ -38,10 +38,10 @@
           <input type="email" id="client-email" required />
         </div>
         <div class="field" style="margin-top:14px;">
-          <label for="client-phone">Teléfono (opcional)</label>
-          <input type="text" id="client-phone" />
+          <label for="client-phone">WhatsApp (recomendado)</label>
+          <input type="tel" id="client-phone" placeholder="Ej: 11 3010 8299" autocomplete="tel" />
         </div>
-        <button type="submit" class="primary" id="confirm-btn" style="margin-top:20px;">Confirmar pedido</button>
+        <button type="submit" class="primary" id="confirm-btn" style="margin-top:20px;">Confirmar y enviar por WhatsApp</button>
       </form>
     </div>
   </main>
@@ -50,7 +50,8 @@
     <div class="create-panel" style="text-align:center;">
       <h2>¡Pedido recibido!</h2>
       <p style="color:var(--text-muted);">Pedido #<span id="order-id"></span> — <span id="order-summary"></span></p>
-      <p style="color:var(--text-muted); margin-top:16px;">Nos vamos a poner en contacto para coordinar el pago y la entrega de tus fotos.</p>
+      <p style="color:var(--text-muted); margin-top:16px;">El pedido ya está en el panel del fotógrafo. Completá el envío por WhatsApp para coordinar el pago y la entrega.</p>
+      <a href="#" id="whatsapp-order-link" class="wa-btn" target="_blank" rel="noopener noreferrer">Enviar pedido por WhatsApp</a>
       <a href="#" id="back-to-gallery" class="admin-link" style="margin-top:20px;">Volver a la galería</a>
     </div>
   </main>
@@ -72,6 +73,7 @@
 
     let pricePerPhoto = 0;
     let selectedPhotos = [];
+    let galleryName = '';
 
     async function init() {
       try {
@@ -80,6 +82,7 @@
           window.location.href = `gallery.html?slug=${slug}`;
           return;
         }
+        galleryName = gallery.name;
         document.getElementById('gallery-name').textContent = gallery.name;
         pricePerPhoto = Number(gallery.pricePerPhoto) || 0;
 
@@ -120,6 +123,20 @@
       document.getElementById('total-amount').textContent = `$${total.toLocaleString('es-AR')} (${selectedPhotos.length} foto${selectedPhotos.length === 1 ? '' : 's'})`;
     }
 
+    function openOrderWhatsApp(order, photoNames, name, email, phone) {
+      const url = buildClientOrderWhatsAppUrl({
+        order,
+        galleryName: galleryName || order.gallery_name,
+        photoNames,
+        clientName: name,
+        clientEmail: email,
+        clientPhone: phone,
+      });
+      const link = document.getElementById('whatsapp-order-link');
+      link.href = url;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+
     document.getElementById('checkout-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = document.getElementById('confirm-btn');
@@ -132,7 +149,7 @@
         const clientEmail = document.getElementById('client-email').value.trim();
         const clientPhone = document.getElementById('client-phone').value.trim();
 
-        const { order } = await apiRequest(`/api/galleries/${slug}/orders`, {
+        const { order, photos } = await apiRequest(`/api/galleries/${slug}/orders`, {
           method: 'POST',
           extraHeaders: galleryHeaders(),
           body: { clientToken, clientName, clientEmail, clientPhone },
@@ -144,12 +161,17 @@
         document.getElementById('order-summary').textContent = pricePerPhoto
           ? `${order.photo_count} foto(s) por $${Number(order.total_amount).toLocaleString('es-AR')}`
           : `${order.photo_count} foto(s)`;
+
+        const photoNames = Array.isArray(photos) && photos.length
+          ? photos
+          : selectedPhotos.map((p) => p.file_name);
+        openOrderWhatsApp(order, photoNames, clientName, clientEmail, clientPhone);
       } catch (err) {
         messageEl.textContent = err.message;
         messageEl.className = 'message show error';
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Confirmar pedido';
+        btn.textContent = 'Confirmar y enviar por WhatsApp';
       }
     });
 

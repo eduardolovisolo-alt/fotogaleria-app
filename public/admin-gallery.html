@@ -8,9 +8,11 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">Foto<span>Galería</span> Pro</div>
+    <a class="brand" href="admin.html">Foto<span>Galería</span> Pro</a>
     <nav>
-      <a href="admin.html">Mis galerías</a>
+      <a href="admin.html">Galerías</a>
+      <a href="admin-orders.html">Pedidos</a>
+      <a href="admin-messages.html">Mensajes</a>
       <a href="#" id="logout-link">Cerrar sesión</a>
     </nav>
   </header>
@@ -36,9 +38,15 @@
           Galería pública (sin contraseña)
         </label>
       </div>
-      <div class="field" id="settings-password-field" style="margin-top:14px;">
-        <label for="settings-password">Nueva contraseña (dejar vacío para no cambiarla)</label>
-        <input type="text" id="settings-password" placeholder="Contraseña para los clientes" />
+      <div id="settings-private-fields" style="margin-top:14px;">
+        <div class="field">
+          <label for="settings-username">Usuario de acceso</label>
+          <input type="text" id="settings-username" placeholder="Usuario para los clientes" />
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <label for="settings-password">Nueva contraseña (dejar vacío para no cambiarla)</label>
+          <input type="text" id="settings-password" placeholder="Contraseña para los clientes" />
+        </div>
       </div>
       <div class="field" style="margin-top:14px;">
         <label for="settings-price">Precio por foto (dejar vacío si no vendés fotos)</label>
@@ -77,7 +85,7 @@
   <script src="assets/js/api.js"></script>
   <script>
     const session = getSession();
-    if (!session) window.location.href = 'index.html';
+    if (!session) window.location.href = 'login.html';
 
     const params = new URLSearchParams(window.location.search);
     const slug = params.get('slug');
@@ -112,7 +120,8 @@
 
       document.getElementById('share-link').value = `${window.location.origin}/gallery.html?slug=${gallery.slug}`;
       document.getElementById('settings-public').checked = gallery.isPublic;
-      document.getElementById('settings-password-field').style.display = gallery.isPublic ? 'none' : 'block';
+      document.getElementById('settings-private-fields').style.display = gallery.isPublic ? 'none' : 'block';
+      document.getElementById('settings-username').value = gallery.accessUsername || '';
       document.getElementById('settings-price').value = gallery.pricePerPhoto || '';
     }
 
@@ -126,20 +135,21 @@
     });
 
     document.getElementById('settings-public').addEventListener('change', (e) => {
-      document.getElementById('settings-password-field').style.display = e.target.checked ? 'none' : 'block';
+      document.getElementById('settings-private-fields').style.display = e.target.checked ? 'none' : 'block';
     });
 
     document.getElementById('save-settings-btn').addEventListener('click', async () => {
       const messageEl = document.getElementById('settings-message');
       const isPublic = document.getElementById('settings-public').checked;
       const password = document.getElementById('settings-password').value;
+      const accessUsername = document.getElementById('settings-username').value.trim();
       const pricePerPhoto = document.getElementById('settings-price').value;
 
       try {
         await apiRequest(`/api/galleries/${currentGallery.id}`, {
           method: 'PUT',
           token: session.token,
-          body: { isPublic, password: password || undefined, pricePerPhoto },
+          body: { isPublic, password: password || undefined, accessUsername, pricePerPhoto },
         });
         showMessage(messageEl, 'Configuración guardada.', 'success');
         document.getElementById('settings-password').value = '';
@@ -160,8 +170,10 @@
       photos.forEach((photo) => {
         const card = document.createElement('div');
         card.className = 'photo-card';
+        const isCover = currentGallery && Number(currentGallery.coverPhotoId) === Number(photo.id);
         card.innerHTML = `
           <img src="${photo.thumbnailUrl}" alt="${photo.file_name}" loading="lazy" />
+          <button class="cover-btn${isCover ? ' active' : ''}" data-id="${photo.id}" title="Usar como foto de la galería">★</button>
           <button class="delete-btn" data-id="${photo.id}" title="Eliminar">✕</button>
         `;
         galleryGrid.appendChild(card);
@@ -169,12 +181,30 @@
       galleryGrid.querySelectorAll('.delete-btn').forEach((btn) => {
         btn.addEventListener('click', () => deletePhoto(btn.dataset.id));
       });
+      galleryGrid.querySelectorAll('.cover-btn').forEach((btn) => {
+        btn.addEventListener('click', () => setCoverPhoto(btn.dataset.id));
+      });
     }
 
     async function loadPhotos() {
       try {
         const { photos } = await apiRequest(`/api/galleries/${slug}/photos`, { token: session.token });
         renderPhotos(photos);
+      } catch (err) {
+        showMessage(uploadMessage, err.message, 'error');
+      }
+    }
+
+    async function setCoverPhoto(photoId) {
+      try {
+        await apiRequest(`/api/galleries/${currentGallery.id}`, {
+          method: 'PUT',
+          token: session.token,
+          body: { coverPhotoId: Number(photoId) },
+        });
+        currentGallery.coverPhotoId = Number(photoId);
+        loadPhotos();
+        showMessage(uploadMessage, 'Foto destacada actualizada. Esa es la portada en la home.', 'success');
       } catch (err) {
         showMessage(uploadMessage, err.message, 'error');
       }
@@ -246,6 +276,7 @@
       photoInput.value = '';
       folderInput.value = '';
       uploadBtn.disabled = false;
+      await loadGalleries();
       loadPhotos();
 
       setTimeout(() => { progressBox.style.display = 'none'; }, 3000);
@@ -286,19 +317,30 @@
           return;
         }
         box.className = '';
-        box.innerHTML = orders.map((o) => `
+        box.innerHTML = orders.map((o) => {
+          const replyUrl = buildPhotographerReplyWhatsAppUrl(o, currentGallery.name);
+          const photos = (o.items || []).map((item) => item.fileName).filter(Boolean);
+          return `
           <div class="order-row">
             <div>
-              <strong>${o.client_name}</strong> — ${o.client_email}${o.client_phone ? ` · ${o.client_phone}` : ''}<br/>
+              <strong>${o.client_name}</strong>
+              <span class="badge ${o.status}">${STATUS_LABELS[o.status] || o.status}</span>
+              <br/>
+              <span class="meta">${o.client_email}${o.client_phone ? ` · ${o.client_phone}` : ''}</span><br/>
               <span class="meta">${o.photo_count} foto(s) · $${Number(o.total_amount).toLocaleString('es-AR')} · ${new Date(o.created_at).toLocaleString('es-AR')}</span>
+              ${photos.length ? `<span class="meta">${photos.join(', ')}</span>` : ''}
             </div>
-            <select data-id="${o.id}" class="order-status">
-              <option value="pending" ${o.status === 'pending' ? 'selected' : ''}>Pendiente</option>
-              <option value="paid" ${o.status === 'paid' ? 'selected' : ''}>Pagado</option>
-              <option value="cancelled" ${o.status === 'cancelled' ? 'selected' : ''}>Cancelado</option>
-            </select>
+            <div class="gallery-row-actions">
+              ${replyUrl ? `<a class="wa-btn wa-btn-sm" href="${replyUrl}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ''}
+              <select data-id="${o.id}" class="order-status">
+                <option value="pending" ${o.status === 'pending' ? 'selected' : ''}>Pendiente</option>
+                <option value="paid" ${o.status === 'paid' ? 'selected' : ''}>Pagado</option>
+                <option value="cancelled" ${o.status === 'cancelled' ? 'selected' : ''}>Cancelado</option>
+              </select>
+            </div>
           </div>
-        `).join('');
+        `;
+        }).join('');
 
         box.querySelectorAll('.order-status').forEach((select) => {
           select.addEventListener('change', () => updateOrderStatus(select.dataset.id, select.value));

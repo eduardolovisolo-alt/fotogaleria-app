@@ -1,9 +1,10 @@
 const pool = require('../config/db');
 
-async function create({ adminId, name, slug, isPublic, passwordHash, pricePerPhoto }) {
+async function create({ adminId, name, slug, isPublic, passwordHash, accessUsername, pricePerPhoto }) {
   const [result] = await pool.query(
-    'INSERT INTO galleries (admin_id, name, slug, is_public, password_hash, price_per_photo) VALUES (?, ?, ?, ?, ?, ?)',
-    [adminId, name, slug, isPublic, passwordHash || null, pricePerPhoto || null]
+    `INSERT INTO galleries (admin_id, name, slug, is_public, password_hash, access_username, price_per_photo)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [adminId, name, slug, isPublic, passwordHash || null, accessUsername || null, pricePerPhoto || null]
   );
   return findById(result.insertId);
 }
@@ -26,12 +27,19 @@ async function findByAdmin(adminId) {
   return rows;
 }
 
+async function findAll() {
+  const [rows] = await pool.query(
+    'SELECT * FROM galleries ORDER BY created_at DESC'
+  );
+  return rows;
+}
+
 async function slugExists(slug) {
   const [rows] = await pool.query('SELECT id FROM galleries WHERE slug = ? LIMIT 1', [slug]);
   return rows.length > 0;
 }
 
-async function update(id, { name, isPublic, passwordHash, clearPassword, pricePerPhoto }) {
+async function update(id, { name, isPublic, passwordHash, clearPassword, accessUsername, coverPhotoId, pricePerPhoto }) {
   const fields = [];
   const values = [];
 
@@ -49,6 +57,15 @@ async function update(id, { name, isPublic, passwordHash, clearPassword, pricePe
   }
   if (clearPassword) {
     fields.push('password_hash = NULL');
+    fields.push('access_username = NULL');
+  }
+  if (accessUsername !== undefined) {
+    fields.push('access_username = ?');
+    values.push(accessUsername || null);
+  }
+  if (coverPhotoId !== undefined) {
+    fields.push('cover_photo_id = ?');
+    values.push(coverPhotoId || null);
   }
   if (pricePerPhoto !== undefined) {
     fields.push('price_per_photo = ?');
@@ -66,4 +83,4 @@ async function deleteById(id) {
   await pool.query('DELETE FROM galleries WHERE id = ?', [id]);
 }
 
-module.exports = { create, findById, findBySlug, findByAdmin, slugExists, update, deleteById };
+module.exports = { create, findById, findBySlug, findByAdmin, findAll, slugExists, update, deleteById };

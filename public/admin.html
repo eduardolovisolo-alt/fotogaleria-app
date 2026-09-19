@@ -8,8 +8,9 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">Foto<span>Galería</span> Pro</div>
+    <a class="brand" href="admin.html">Foto<span>Galería</span> Pro</a>
     <nav>
+      <a href="admin-orders.html">Pedidos</a>
       <a href="admin-messages.html">Mensajes</a>
       <a href="dashboard.html">Mi cuenta</a>
       <a href="#" id="logout-link">Cerrar sesión</a>
@@ -35,9 +36,15 @@
             Galería pública (sin contraseña)
           </label>
         </div>
-        <div class="field" id="password-field" style="display:none; margin-top:14px;">
-          <label for="gallery-password">Contraseña de acceso</label>
-          <input type="text" id="gallery-password" placeholder="Contraseña para los clientes" />
+        <div id="private-fields" style="display:none; margin-top:14px;">
+          <div class="field">
+            <label for="gallery-username">Usuario de acceso</label>
+            <input type="text" id="gallery-username" placeholder="Usuario para los clientes" />
+          </div>
+          <div class="field" style="margin-top:14px;">
+            <label for="gallery-password">Contraseña de acceso</label>
+            <input type="text" id="gallery-password" placeholder="Contraseña para los clientes" />
+          </div>
         </div>
         <div class="field" style="margin-top:14px;">
           <label for="gallery-price">Precio por foto (opcional, en tu moneda)</label>
@@ -57,7 +64,7 @@
   <script src="assets/js/api.js"></script>
   <script>
     const session = getSession();
-    if (!session) window.location.href = 'index.html';
+    if (!session) window.location.href = 'login.html';
 
     document.getElementById('logout-link').addEventListener('click', (e) => {
       e.preventDefault();
@@ -73,14 +80,14 @@
         }
       } catch {
         clearSession();
-        window.location.href = 'index.html';
+        window.location.href = 'login.html';
       }
     }
 
     const publicCheckbox = document.getElementById('gallery-public');
-    const passwordField = document.getElementById('password-field');
+    const privateFields = document.getElementById('private-fields');
     publicCheckbox.addEventListener('change', () => {
-      passwordField.style.display = publicCheckbox.checked ? 'none' : 'block';
+      privateFields.style.display = publicCheckbox.checked ? 'none' : 'block';
     });
 
     function showMessage(el, text, type) {
@@ -151,16 +158,17 @@
         const name = document.getElementById('gallery-name').value.trim();
         const isPublic = publicCheckbox.checked;
         const password = document.getElementById('gallery-password').value;
+        const accessUsername = document.getElementById('gallery-username').value.trim();
         const pricePerPhoto = document.getElementById('gallery-price').value;
 
         await apiRequest('/api/galleries', {
           method: 'POST',
           token: session.token,
-          body: { name, isPublic, password, pricePerPhoto },
+          body: { name, isPublic, password, accessUsername, pricePerPhoto },
         });
 
         document.getElementById('create-form').reset();
-        passwordField.style.display = 'none';
+        privateFields.style.display = 'none';
         showMessage(messageEl, 'Galería creada.', 'success');
         loadGalleries();
       } catch (err) {

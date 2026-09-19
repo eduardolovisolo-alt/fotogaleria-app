@@ -13,6 +13,7 @@ const router = express.Router();
 // --- Rutas de administración (requieren login de admin) ---
 router.post('/', protect, requireRole('admin'), galleryController.createGallery);
 router.get('/', protect, requireRole('admin'), galleryController.listMyGalleries);
+router.get('/catalog', galleryController.listCatalog);
 router.put('/:id', protect, requireRole('admin'), galleryController.updateGallery);
 router.delete('/:id', protect, requireRole('admin'), galleryController.deleteGallery);
 router.get('/:id/selections', protect, requireRole('admin'), galleryController.getSelections);

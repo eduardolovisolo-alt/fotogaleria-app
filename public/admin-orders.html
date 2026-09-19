@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FotoGalería Pro — Pedidos</title>
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="admin.html">Foto<span>Galería</span> Pro</a>
+    <nav>
+      <a href="admin.html">Galerías</a>
+      <a href="admin-messages.html">Mensajes</a>
+      <a href="dashboard.html">Mi cuenta</a>
+      <a href="#" id="logout-link">Cerrar sesión</a>
+    </nav>
+  </header>
+
+  <main class="admin-page">
+    <div class="page-header">
+      <h1>Pedidos</h1>
+    </div>
+    <p class="subtitle" style="margin-top:-12px; margin-bottom:22px;">Los clientes confirman por WhatsApp. Acá queda el registro para marcar pagado o cancelado y responderles.</p>
+
+    <div class="order-stats" id="order-stats"></div>
+    <div class="filter-row" id="filter-row">
+      <button type="button" class="filter-chip active" data-filter="all">Todos</button>
+      <button type="button" class="filter-chip" data-filter="pending">Pendientes</button>
+      <button type="button" class="filter-chip" data-filter="paid">Pagados</button>
+      <button type="button" class="filter-chip" data-filter="cancelled">Cancelados</button>
+    </div>
+
+    <div id="orders-box" class="empty-state">Cargando...</div>
+  </main>
+
+  <script src="assets/js/api.js"></script>
+  <script>
+    const session = getSession();
+    if (!session) window.location.href = 'login.html';
+
+    document.getElementById('logout-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      clearSession();
+      window.location.href = 'index.html';
+    });
+
+    const STATUS_LABELS = { pending: 'Pendiente', paid: 'Pagado', cancelled: 'Cancelado' };
+    let allOrders = [];
+    let currentFilter = 'all';
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function renderStats(orders) {
+      const pending = orders.filter((o) => o.status === 'pending').length;
+      const paid = orders.filter((o) => o.status === 'paid').length;
+      const total = orders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+      document.getElementById('order-stats').innerHTML = `
+        <div class="stat-card"><span>Pendientes</span><strong>${pending}</strong></div>
+        <div class="stat-card"><span>Pagados</span><strong>${paid}</strong></div>
+        <div class="stat-card"><span>Total pedidos</span><strong>${orders.length}</strong></div>
+        <div class="stat-card"><span>Importe</span><strong>$${total.toLocaleString('es-AR')}</strong></div>
+      `;
+    }
+
+    function renderOrders() {
+      const box = document.getElementById('orders-box');
+      const orders = currentFilter === 'all'
+        ? allOrders
+        : allOrders.filter((o) => o.status === currentFilter);
+
+      if (!allOrders.length) {
+        box.className = 'empty-state';
+        box.textContent = 'Todavía no recibiste pedidos. Cuando un cliente confirme, te escribe por WhatsApp y el pedido aparece acá.';
+        return;
+      }
+      if (!orders.length) {
+        box.className = 'empty-state';
+        box.textContent = 'No hay pedidos con ese estado.';
+        return;
+      }
+
+      box.className = '';
+      box.innerHTML = orders.map((o) => {
+        const replyUrl = buildPhotographerReplyWhatsAppUrl(o, o.gallery_name);
+        const photos = (o.items || []).map((item) => item.fileName).filter(Boolean);
+        return `
+          <article class="order-card">
+            <div class="order-card-top">
+              <div>
+                <h3>${escapeHtml(o.client_name)} <span class="badge ${o.status}">${STATUS_LABELS[o.status] || o.status}</span></h3>
+                <p class="meta">Pedido #${o.id} · ${escapeHtml(o.gallery_name)} · ${new Date(o.created_at).toLocaleString('es-AR')}</p>
+                <p class="meta">${escapeHtml(o.client_email)}${o.client_phone ? ` · ${escapeHtml(o.client_phone)}` : ''}</p>
+                <p class="meta">${o.photo_count} foto(s)${Number(o.total_amount) ? ` · $${Number(o.total_amount).toLocaleString('es-AR')}` : ''}</p>
+              </div>
+              <div class="gallery-row-actions">
+                ${replyUrl ? `<a class="wa-btn wa-btn-sm" href="${replyUrl}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ''}
+                <a class="secondary" href="admin-gallery.html?slug=${encodeURIComponent(o.gallery_slug)}">Ver galería</a>
+                <select data-id="${o.id}" class="order-status">
+                  <option value="pending" ${o.status === 'pending' ? 'selected' : ''}>Pendiente</option>
+                  <option value="paid" ${o.status === 'paid' ? 'selected' : ''}>Pagado</option>
+                  <option value="cancelled" ${o.status === 'cancelled' ? 'selected' : ''}>Cancelado</option>
+                </select>
+              </div>
+            </div>
+            ${photos.length ? `<ul class="order-photos">${photos.map((name) => `<li>${escapeHtml(name)}</li>`).join('')}</ul>` : ''}
+          </article>
+        `;
+      }).join('');
+
+      box.querySelectorAll('.order-status').forEach((select) => {
+        select.addEventListener('change', () => updateOrderStatus(select.dataset.id, select.value));
+      });
+    }
+
+    async function loadOrders() {
+      const box = document.getElementById('orders-box');
+      try {
+        const { user } = await apiRequest('/api/auth/me', { token: session.token });
+        if (user.role !== 'admin') {
+          window.location.href = 'dashboard.html';
+          return;
+        }
+
+        const { orders } = await apiRequest('/api/orders', { token: session.token });
+        allOrders = orders;
+        renderStats(orders);
+        renderOrders();
+      } catch (err) {
+        box.className = 'empty-state';
+        box.textContent = err.message || 'No se pudieron cargar los pedidos.';
+      }
+    }
+
+    async function updateOrderStatus(orderId, status) {
+      try {
+        await apiRequest(`/api/orders/${orderId}`, {
+          method: 'PUT',
+          token: session.token,
+          body: { status },
+        });
+        await loadOrders();
+      } catch (err) {
+        alert(err.message);
+        loadOrders();
+      }
+    }
+
+    document.getElementById('filter-row').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-filter]');
+      if (!btn) return;
+      currentFilter = btn.dataset.filter;
+      document.querySelectorAll('.filter-chip').forEach((chip) => {
+        chip.classList.toggle('active', chip === btn);
+      });
+      renderOrders();
+    });
+
+    loadOrders();
+  </script>
+</body>
+</html>

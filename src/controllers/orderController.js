@@ -1,8 +1,32 @@
 const orderModel = require('../models/orderModel');
 const galleryModel = require('../models/galleryModel');
 const selectionModel = require('../models/selectionModel');
+const photoModel = require('../models/photoModel');
+const userModel = require('../models/userModel');
+const {
+  sendOrderNotificationToPhotographer,
+  sendOrderConfirmationToClient,
+} = require('../utils/mailer');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function appBaseUrl(req) {
+  return (process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+}
+
+async function withItems(orders) {
+  const items = await orderModel.findItemsByOrderIds(orders.map((order) => order.id));
+  const byOrder = {};
+  items.forEach((item) => {
+    byOrder[item.order_id] = byOrder[item.order_id] || [];
+    byOrder[item.order_id].push({
+      photoId: item.photo_id,
+      fileName: item.file_name,
+      price: item.price,
+    });
+  });
+  return orders.map((order) => ({ ...order, items: byOrder[order.id] || [] }));
+}
 
 async function createOrder(req, res) {
   try {
@@ -31,7 +55,48 @@ async function createOrder(req, res) {
       pricePerPhoto: gallery.price_per_photo,
     });
 
-    res.status(201).json({ order });
+    let photoNames = [];
+    try {
+      const photos = await photoModel.findByIds(photoIds);
+      photoNames = photos.map((p) => p.file_name);
+    } catch (photosErr) {
+      console.error('order photos error:', photosErr);
+    }
+
+    try {
+      const photographer = await userModel.findById(gallery.admin_id);
+      const notifyEmail = process.env.ADMIN_NOTIFY_EMAIL || photographer?.email;
+
+      if (notifyEmail) {
+        await sendOrderNotificationToPhotographer({
+          to: notifyEmail,
+          photographerName: photographer?.name,
+          clientName: order.client_name,
+          clientEmail: order.client_email,
+          clientPhone: order.client_phone,
+          order,
+          gallery,
+          photoNames,
+          adminUrl: `${appBaseUrl(req)}/admin-gallery.html?slug=${gallery.slug}`,
+        });
+      }
+
+      await sendOrderConfirmationToClient({
+        to: order.client_email,
+        clientName: order.client_name,
+        order,
+        gallery,
+        photoNames,
+      });
+    } catch (notifyErr) {
+      console.error('order notify error:', notifyErr);
+    }
+
+    res.status(201).json({
+      order,
+      photos: photoNames,
+      galleryName: gallery.name,
+    });
   } catch (err) {
     console.error('createOrder error:', err);
     res.status(500).json({ error: 'Error al generar el pedido.' });
@@ -44,7 +109,7 @@ async function listGalleryOrders(req, res) {
     if (!gallery || gallery.admin_id !== req.user.sub) {
       return res.status(404).json({ error: 'Galería no encontrada.' });
     }
-    const orders = await orderModel.findByGallery(gallery.id);
+    const orders = await withItems(await orderModel.findByGallery(gallery.id));
     res.json({ orders });
   } catch (err) {
     console.error('listGalleryOrders error:', err);
@@ -54,7 +119,7 @@ async function listGalleryOrders(req, res) {
 
 async function listMyOrders(req, res) {
   try {
-    const orders = await orderModel.findByAdmin(req.user.sub);
+    const orders = await withItems(await orderModel.findByAdmin(req.user.sub));
     res.json({ orders });
   } catch (err) {
     console.error('listMyOrders error:', err);

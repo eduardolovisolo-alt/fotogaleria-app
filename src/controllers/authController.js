@@ -93,8 +93,13 @@ async function forgotPassword(req, res) {
 
       await userModel.setResetToken(user.id, tokenHash, expiresAt);
 
-      const resetUrl = `${process.env.APP_URL || ''}/reset-password?token=${rawToken}`;
-      await sendPasswordResetEmail(user.email, resetUrl);
+      const appUrl = (process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+      const resetUrl = `${appUrl}/reset-password.html?token=${rawToken}`;
+      try {
+        await sendPasswordResetEmail(user.email, resetUrl);
+      } catch (mailErr) {
+        console.error('forgotPassword mail error:', mailErr);
+      }
     }
 
     res.json({ message: 'Si el email existe, vas a recibir instrucciones para restablecer tu contraseña.' });

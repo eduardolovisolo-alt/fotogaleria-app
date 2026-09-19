@@ -8,18 +8,22 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">Foto<span>Galería</span> Pro</div>
+    <a class="brand" href="index.html">Foto<span>Galería</span> Pro</a>
   </header>
 
   <div id="lock-view" class="lock-screen" style="display:none;">
     <div class="card">
       <h1 id="lock-title">Galería privada</h1>
-      <p class="subtitle">Ingresá la contraseña que te compartió el fotógrafo</p>
+      <p class="subtitle">Ingresá el usuario y la contraseña que te compartió el fotógrafo</p>
       <div id="lock-message" class="message"></div>
       <form id="unlock-form">
         <div class="field">
+          <label for="gallery-username">Usuario</label>
+          <input type="text" id="gallery-username" required autocomplete="username" />
+        </div>
+        <div class="field">
           <label for="gallery-password">Contraseña</label>
-          <input type="text" id="gallery-password" required />
+          <input type="password" id="gallery-password" required autocomplete="current-password" />
         </div>
         <button type="submit" class="primary">Entrar</button>
       </form>
@@ -38,7 +42,7 @@
 
   <div class="selection-bar" id="selection-bar" style="display:none;">
     <span id="selection-count">0 fotos seleccionadas</span>
-    <button class="primary" id="continue-btn">Continuar</button>
+    <button class="primary" id="continue-btn">Continuar al pedido</button>
   </div>
 
   <div id="lightbox" class="lightbox" style="display:none;">
@@ -103,12 +107,13 @@
     document.getElementById('unlock-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const messageEl = document.getElementById('lock-message');
+      const username = document.getElementById('gallery-username').value.trim();
       const password = document.getElementById('gallery-password').value;
 
       try {
         const { token } = await apiRequest(`/api/galleries/${slug}/unlock`, {
           method: 'POST',
-          body: { password },
+          body: { username, password },
         });
         galleryToken = token;
         sessionStorage.setItem(`gallery_token_${slug}`, token);

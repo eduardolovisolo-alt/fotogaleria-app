@@ -4,6 +4,7 @@ const { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require('@aw
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { r2, BUCKET_NAME } = require('../config/r2');
 const photoModel = require('../models/photoModel');
+const galleryModel = require('../models/galleryModel');
 const { watermarkBuffer } = require('../utils/watermark');
 
 const THUMBNAIL_WIDTH = 400;
@@ -69,6 +70,10 @@ async function uploadPhoto(req, res) {
       sizeBytes: req.file.size,
     });
 
+    if (!gallery.cover_photo_id) {
+      await galleryModel.update(gallery.id, { coverPhotoId: photo.id });
+    }
+
     res.status(201).json({ photo: await withSignedUrls(photo, true) });
   } catch (err) {
     console.error('uploadPhoto error:', err);
@@ -100,6 +105,12 @@ async function deletePhoto(req, res) {
       await r2.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: photo.preview_key }));
     }
     await photoModel.deleteById(photo.id);
+    if (req.gallery.cover_photo_id === photo.id) {
+      const remaining = await photoModel.findByGallery(req.gallery.id);
+      await galleryModel.update(req.gallery.id, {
+        coverPhotoId: remaining[0] ? remaining[0].id : null,
+      });
+    }
 
     res.json({ message: 'Foto eliminada.' });
   } catch (err) {
