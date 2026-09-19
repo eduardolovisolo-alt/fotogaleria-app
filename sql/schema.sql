@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
   role ENUM('admin', 'client') NOT NULL DEFAULT 'client',
   reset_token VARCHAR(255) NULL,
   reset_token_expires DATETIME NULL,
+  order_auto_delete_days INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -20,6 +21,9 @@ CREATE TABLE IF NOT EXISTS galleries (
   access_username VARCHAR(80) NULL,
   cover_photo_id INT NULL,
   price_per_photo DECIMAL(10,2) NULL,
+  author VARCHAR(150) NULL,
+  apply_watermark TINYINT(1) NOT NULL DEFAULT 1,
+  discount_tiers TEXT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE
@@ -61,7 +65,8 @@ CREATE TABLE IF NOT EXISTS orders (
   client_phone VARCHAR(40) NULL,
   photo_count INT NOT NULL,
   total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
-  status ENUM('pending', 'paid', 'cancelled') NOT NULL DEFAULT 'pending',
+  discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+  status ENUM('pending', 'paid', 'shipped', 'cancelled') NOT NULL DEFAULT 'pending',
   payment_method ENUM('mercadopago', 'transferencia') NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (gallery_id) REFERENCES galleries(id) ON DELETE CASCADE

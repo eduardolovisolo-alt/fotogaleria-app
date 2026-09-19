@@ -38,6 +38,7 @@
     <div class="client-header">
       <a href="index.html" class="back-link">← Volver a galerías</a>
       <h1 id="gallery-name">Cargando...</h1>
+      <p class="gallery-author" id="gallery-author" style="display:none;"></p>
       <p>Elegí tus fotos favoritas tocándolas</p>
     </div>
 
@@ -65,7 +66,7 @@
     <button class="lightbox-nav lightbox-next" id="lightbox-next" type="button" aria-label="Siguiente">›</button>
   </div>
 
-  <script src="assets/js/api.js?v=20260919"></script>
+  <script src="assets/js/api.js?v=20260919-ux"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const slug = params.get('slug');
@@ -78,6 +79,7 @@
     let galleryToken = sessionStorage.getItem(`gallery_token_${slug}`) || null;
     let selectedIds = new Set();
     let pricePerPhoto = 0;
+    let discountTiers = [];
 
     function galleryHeaders() {
       return galleryToken ? { 'X-Gallery-Token': galleryToken } : {};
@@ -87,10 +89,11 @@
       try {
         const { gallery } = await apiRequest(`/api/galleries/${slug}`, { extraHeaders: galleryHeaders() });
         pricePerPhoto = Number(gallery.pricePerPhoto) || 0;
+        discountTiers = gallery.discountTiers || [];
         if (gallery.locked) {
           showLockScreen(gallery.name);
         } else {
-          showGallery(gallery.name);
+          showGallery(gallery);
         }
       } catch (err) {
         document.body.innerHTML = `<p style="text-align:center; margin-top:100px; color:#9a9a9f;">${err.message}</p>`;
@@ -103,10 +106,21 @@
       document.getElementById('gallery-view').style.display = 'none';
     }
 
-    async function showGallery(name) {
+    function setAuthor(author) {
+      const el = document.getElementById('gallery-author');
+      if (author) {
+        el.textContent = `Fotos de ${author}`;
+        el.style.display = 'block';
+      } else {
+        el.style.display = 'none';
+      }
+    }
+
+    async function showGallery(gallery) {
       document.getElementById('lock-view').style.display = 'none';
       document.getElementById('gallery-view').style.display = 'block';
-      document.getElementById('gallery-name').textContent = name;
+      document.getElementById('gallery-name').textContent = gallery.name;
+      setAuthor(gallery.author);
       await loadSelections();
       await loadPhotos();
     }
@@ -126,7 +140,8 @@
         sessionStorage.setItem(`gallery_token_${slug}`, token);
         const { gallery } = await apiRequest(`/api/galleries/${slug}`, { extraHeaders: galleryHeaders() });
         pricePerPhoto = Number(gallery.pricePerPhoto) || 0;
-        showGallery(gallery.name);
+        discountTiers = gallery.discountTiers || [];
+        showGallery(gallery);
       } catch (err) {
         messageEl.textContent = err.message;
         messageEl.className = 'message show error';
@@ -269,7 +284,11 @@
       }
       bar.style.display = 'flex';
       document.body.classList.add('has-selection-bar');
-      const priceText = pricePerPhoto ? ` — $${(pricePerPhoto * count).toLocaleString('es-AR')}` : '';
+      const quote = typeof quotePhotoOrder === 'function'
+        ? quotePhotoOrder(pricePerPhoto, count, discountTiers)
+        : { total: pricePerPhoto * count, percent: 0 };
+      const discountText = quote.percent ? ` (−${quote.percent}%)` : '';
+      const priceText = pricePerPhoto ? ` — $${quote.total.toLocaleString('es-AR')}${discountText}` : '';
       document.getElementById('selection-count').textContent = `${count} foto${count === 1 ? '' : 's'} seleccionada${count === 1 ? '' : 's'}${priceText}`;
     }
 

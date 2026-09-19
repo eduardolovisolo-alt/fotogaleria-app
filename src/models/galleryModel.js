@@ -1,10 +1,39 @@
 const pool = require('../config/db');
+const { normalizeDiscountTiers, parseDiscountTiers } = require('../utils/pricing');
 
-async function create({ adminId, name, slug, isPublic, passwordHash, accessUsername, pricePerPhoto }) {
+function serializeTiers(tiers) {
+  const normalized = normalizeDiscountTiers(tiers);
+  return normalized.length ? JSON.stringify(normalized) : null;
+}
+
+async function create({
+  adminId,
+  name,
+  slug,
+  isPublic,
+  passwordHash,
+  accessUsername,
+  pricePerPhoto,
+  author,
+  applyWatermark,
+  discountTiers,
+}) {
   const [result] = await pool.query(
-    `INSERT INTO galleries (admin_id, name, slug, is_public, password_hash, access_username, price_per_photo)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [adminId, name, slug, isPublic, passwordHash || null, accessUsername || null, pricePerPhoto || null]
+    `INSERT INTO galleries
+      (admin_id, name, slug, is_public, password_hash, access_username, price_per_photo, author, apply_watermark, discount_tiers)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      adminId,
+      name,
+      slug,
+      isPublic,
+      passwordHash || null,
+      accessUsername || null,
+      pricePerPhoto || null,
+      author || null,
+      applyWatermark === false ? 0 : 1,
+      serializeTiers(discountTiers),
+    ]
   );
   return findById(result.insertId);
 }
@@ -39,7 +68,18 @@ async function slugExists(slug) {
   return rows.length > 0;
 }
 
-async function update(id, { name, isPublic, passwordHash, clearPassword, accessUsername, coverPhotoId, pricePerPhoto }) {
+async function update(id, {
+  name,
+  isPublic,
+  passwordHash,
+  clearPassword,
+  accessUsername,
+  coverPhotoId,
+  pricePerPhoto,
+  author,
+  applyWatermark,
+  discountTiers,
+}) {
   const fields = [];
   const values = [];
 
@@ -71,6 +111,18 @@ async function update(id, { name, isPublic, passwordHash, clearPassword, accessU
     fields.push('price_per_photo = ?');
     values.push(pricePerPhoto || null);
   }
+  if (author !== undefined) {
+    fields.push('author = ?');
+    values.push(author || null);
+  }
+  if (applyWatermark !== undefined) {
+    fields.push('apply_watermark = ?');
+    values.push(applyWatermark ? 1 : 0);
+  }
+  if (discountTiers !== undefined) {
+    fields.push('discount_tiers = ?');
+    values.push(serializeTiers(discountTiers));
+  }
 
   if (!fields.length) return findById(id);
 
@@ -83,4 +135,14 @@ async function deleteById(id) {
   await pool.query('DELETE FROM galleries WHERE id = ?', [id]);
 }
 
-module.exports = { create, findById, findBySlug, findByAdmin, findAll, slugExists, update, deleteById };
+module.exports = {
+  create,
+  findById,
+  findBySlug,
+  findByAdmin,
+  findAll,
+  slugExists,
+  update,
+  deleteById,
+  parseDiscountTiers,
+};

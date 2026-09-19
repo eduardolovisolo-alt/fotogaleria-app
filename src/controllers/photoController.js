@@ -40,9 +40,13 @@ async function uploadPhoto(req, res) {
       .resize({ width: PREVIEW_WIDTH, withoutEnlargement: true })
       .toBuffer();
 
-    const watermarkSettings = await settingsForAdmin(gallery.admin_id);
-    const thumbnailBuffer = await watermarkBuffer(thumbnailRaw, watermarkSettings);
-    const previewBuffer = await watermarkBuffer(previewRaw, watermarkSettings);
+    let thumbnailBuffer = thumbnailRaw;
+    let previewBuffer = previewRaw;
+    if (gallery.apply_watermark !== 0) {
+      const watermarkSettings = await settingsForAdmin(gallery.admin_id);
+      thumbnailBuffer = await watermarkBuffer(thumbnailRaw, watermarkSettings);
+      previewBuffer = await watermarkBuffer(previewRaw, watermarkSettings);
+    }
 
     await r2.send(new PutObjectCommand({
       Bucket: BUCKET_NAME,

@@ -23,9 +23,19 @@
     <div class="gallery-grid" id="checkout-grid"></div>
 
     <div class="create-panel" style="margin-top:24px;">
-      <div id="total-row" style="display:flex; justify-content:space-between; font-size:1.1rem; margin-bottom:18px;">
-        <span>Total</span>
-        <strong id="total-amount">$0</strong>
+      <div id="total-row" style="display:none; flex-direction:column; gap:6px; margin-bottom:18px;">
+        <div style="display:flex; justify-content:space-between; color:var(--text-muted); font-size:0.92rem;">
+          <span id="subtotal-label">Subtotal</span>
+          <span id="subtotal-amount"></span>
+        </div>
+        <div id="discount-row" style="display:none; justify-content:space-between; color:var(--success); font-size:0.92rem;">
+          <span id="discount-label">Descuento</span>
+          <span id="discount-amount"></span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:1.1rem;">
+          <span>Total</span>
+          <strong id="total-amount">$0</strong>
+        </div>
       </div>
 
       <div id="form-message" class="message"></div>
@@ -57,7 +67,7 @@
     </div>
   </main>
 
-  <script src="assets/js/api.js?v=20260919"></script>
+  <script src="assets/js/api.js?v=20260919-ux"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const slug = params.get('slug');
@@ -75,6 +85,7 @@
     }
 
     let pricePerPhoto = 0;
+    let discountTiers = [];
     let selectedPhotos = [];
     let galleryName = '';
 
@@ -88,6 +99,7 @@
         galleryName = gallery.name;
         document.getElementById('gallery-name').textContent = gallery.name;
         pricePerPhoto = Number(gallery.pricePerPhoto) || 0;
+        discountTiers = gallery.discountTiers || [];
 
         const { selectedPhotoIds } = await apiRequest(
           `${galleryApi}/selections/mine?clientToken=${encodeURIComponent(clientToken)}`,
@@ -121,9 +133,21 @@
     }
 
     function renderTotal() {
-      const total = pricePerPhoto * selectedPhotos.length;
+      const quote = typeof quotePhotoOrder === 'function'
+        ? quotePhotoOrder(pricePerPhoto, selectedPhotos.length, discountTiers)
+        : { total: pricePerPhoto * selectedPhotos.length, subtotal: pricePerPhoto * selectedPhotos.length, percent: 0, discount: 0 };
       document.getElementById('total-row').style.display = pricePerPhoto ? 'flex' : 'none';
-      document.getElementById('total-amount').textContent = `$${total.toLocaleString('es-AR')} (${selectedPhotos.length} foto${selectedPhotos.length === 1 ? '' : 's'})`;
+      document.getElementById('subtotal-label').textContent = `Subtotal (${quote.qty} foto${quote.qty === 1 ? '' : 's'})`;
+      document.getElementById('subtotal-amount').textContent = `$${quote.subtotal.toLocaleString('es-AR')}`;
+      const discountRow = document.getElementById('discount-row');
+      if (quote.percent) {
+        discountRow.style.display = 'flex';
+        document.getElementById('discount-label').textContent = `Descuento ${quote.percent}%`;
+        document.getElementById('discount-amount').textContent = `−$${quote.discount.toLocaleString('es-AR')}`;
+      } else {
+        discountRow.style.display = 'none';
+      }
+      document.getElementById('total-amount').textContent = `$${quote.total.toLocaleString('es-AR')}`;
     }
 
     function openOrderWhatsApp(order, photoNames, name, email, phone) {

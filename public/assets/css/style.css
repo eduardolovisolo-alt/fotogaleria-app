@@ -527,6 +527,11 @@ a.secondary:hover {
   color: var(--success);
 }
 
+.badge.shipped {
+  background: rgba(138, 160, 181, 0.2);
+  color: #9bb4c9;
+}
+
 .gallery-row-actions {
   display: flex;
   gap: 8px;
@@ -1262,6 +1267,129 @@ body:has(.lightbox:not([hidden])) .whatsapp-float {
   line-height: 1.55;
 }
 
+.settings-fold {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0 18px 16px;
+  margin-bottom: 22px;
+}
+
+.settings-fold > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 16px 0 4px;
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+
+.settings-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-fold > summary::after {
+  content: '▾';
+  float: right;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.settings-fold[open] > summary {
+  margin-bottom: 12px;
+}
+
+.discount-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.order-line {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.order-line > summary {
+  list-style: none;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) auto minmax(90px, auto) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 14px;
+}
+
+.order-line > summary::-webkit-details-marker {
+  display: none;
+}
+
+.order-line-main {
+  min-width: 0;
+}
+
+.order-line-main strong {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-line-main span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.order-line-body {
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.gallery-author {
+  color: var(--text-muted);
+  margin: 4px 0 0;
+  font-size: 0.92rem;
+}
+
+.orders-summary-link {
+  color: var(--text-muted);
+  margin: 0 0 28px;
+}
+
+.orders-summary-link a {
+  color: var(--accent);
+}
+
+@media (max-width: 800px) {
+  .order-line > summary {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "main status"
+      "meta trash";
+  }
+}
+
 @media (max-width: 800px) {
   .order-stats {
     grid-template-columns: 1fr 1fr;
@@ -1311,8 +1439,8 @@ body:has(.lightbox:not([hidden])) .whatsapp-float {
 
 .catalog-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
 }
 
 .catalog-card {
@@ -1360,15 +1488,20 @@ body:has(.lightbox:not([hidden])) .whatsapp-float {
 
 .catalog-overlay h2 {
   margin: 0;
-  font-size: clamp(0.78rem, 3.4vw, 1.08rem);
+  font-size: clamp(0.68rem, 1.7vw, 0.92rem);
   line-height: 1.25;
 }
 
+.catalog-author,
 .catalog-count {
   display: block;
-  margin-top: 4px;
+  margin-top: 3px;
   color: rgba(242, 240, 234, 0.78);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
+}
+
+.catalog-author {
+  color: var(--accent);
 }
 
 .catalog-lock {
@@ -1424,12 +1557,19 @@ body:has(.lightbox:not([hidden])) .whatsapp-float {
   background: var(--accent);
 }
 
+@media (max-width: 900px) {
+  .catalog-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 @media (max-width: 600px) {
   .catalog-page {
     padding: 12px 16px 24px;
   }
 
   .catalog-grid {
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
 
