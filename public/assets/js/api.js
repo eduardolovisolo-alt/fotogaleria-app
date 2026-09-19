@@ -21,9 +21,9 @@ function whatsappHref(text, number = WHATSAPP_NUMBER) {
 function openWhatsApp(url, linkEl) {
   if (linkEl) linkEl.href = url;
   if (!url || url === '#') return false;
-  const popup = window.open(url, '_blank', 'noopener,noreferrer');
-  if (!popup) window.location.href = url;
-  return true;
+  const popup = window.open(url, '_blank');
+  if (!popup && !linkEl) window.location.href = url;
+  return Boolean(popup);
 }
 
 function formatMoneyAR(amount) {
