@@ -1,7 +1,7 @@
 const API_BASE_URL = window.location.origin;
 
 const WHATSAPP_NUMBER = '5491130108299';
-const WHATSAPP_ADMIN_PAGES = ['/dashboard.html', '/admin.html', '/admin-gallery.html', '/admin-messages.html', '/admin-orders.html', '/admin-watermark.html', '/checkout.html'];
+const WHATSAPP_ADMIN_PAGES = ['/dashboard.html', '/admin.html', '/admin-gallery.html', '/admin-messages.html', '/admin-orders.html', '/admin-watermark.html', '/checkout.html', '/pedido.html'];
 
 function toWhatsAppNumber(phone) {
   let digits = String(phone || '').replace(/\D/g, '');
@@ -30,7 +30,7 @@ function formatMoneyAR(amount) {
   return Number(amount || 0).toLocaleString('es-AR');
 }
 
-function buildClientOrderWhatsAppUrl({ order, galleryName, photoNames, clientName, clientEmail, clientPhone }) {
+function buildClientOrderWhatsAppUrl({ order, galleryName, photoNames, clientName, clientEmail, clientPhone, downloadUrl }) {
   const names = photoNames || [];
   const photoLines = names.length
     ? names.map((name) => `• ${name}`).join('\n')
@@ -40,6 +40,7 @@ function buildClientOrderWhatsAppUrl({ order, galleryName, photoNames, clientNam
     'Hola! Quiero confirmar este pedido:',
     '',
     `Pedido #${order.id}`,
+    order.access_pin ? `PIN: ${order.access_pin}` : null,
     `Galería: ${galleryName}`,
     `Fotos (${order.photo_count}):`,
     photoLines,
@@ -48,15 +49,32 @@ function buildClientOrderWhatsAppUrl({ order, galleryName, photoNames, clientNam
     `Nombre: ${clientName}`,
     `Email: ${clientEmail}`,
     clientPhone ? `WhatsApp: ${clientPhone}` : null,
+    downloadUrl ? `\nSeguí tu pedido y descargá cuando esté listo:\n${downloadUrl}` : null,
   ].filter(Boolean).join('\n');
 
   return whatsappHref(text);
 }
 
-function buildPhotographerReplyWhatsAppUrl(order, galleryName) {
+function orderAccessUrl(order) {
+  if (!order || !order.download_token) return '';
+  return `${window.location.origin}/pedido.html?c=${encodeURIComponent(order.download_token)}`;
+}
+
+function buildPhotographerReplyWhatsAppUrl(order, galleryName, extras = {}) {
   const number = toWhatsAppNumber(order.client_phone);
   if (!number) return null;
-  const text = `Hola ${order.client_name}! Te escribo por tu pedido #${order.id} de ${galleryName} (${order.photo_count} foto${order.photo_count === 1 ? '' : 's'}).`;
+  const downloadUrl = extras.downloadUrl || orderAccessUrl(order);
+  const ready = downloadUrl && (order.status === 'paid' || order.status === 'shipped');
+  const text = ready
+    ? [
+      `Hola ${order.client_name}! Tu pedido #${order.id} de ${galleryName} ya está listo para descargar.`,
+      '',
+      `Link: ${downloadUrl}`,
+      order.access_pin ? `PIN: ${order.access_pin}` : null,
+      '',
+      `Si el link no abre, entrá a la página del pedido, poné el número #${order.id} y el PIN.`,
+    ].filter(Boolean).join('\n')
+    : `Hola ${order.client_name}! Te escribo por tu pedido #${order.id} de ${galleryName} (${order.photo_count} foto${order.photo_count === 1 ? '' : 's'}).`;
   return whatsappHref(text, number);
 }
 
@@ -65,6 +83,7 @@ window.whatsappHref = whatsappHref;
 window.openWhatsApp = openWhatsApp;
 window.buildClientOrderWhatsAppUrl = buildClientOrderWhatsAppUrl;
 window.buildPhotographerReplyWhatsAppUrl = buildPhotographerReplyWhatsAppUrl;
+window.orderAccessUrl = orderAccessUrl;
 
 function injectWhatsAppButton() {
   if (WHATSAPP_ADMIN_PAGES.includes(window.location.pathname)) return;

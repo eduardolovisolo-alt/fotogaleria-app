@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>FotoGalería Pro — Confirmar selección</title>
-<link rel="stylesheet" href="assets/css/style.css" />
+<link rel="stylesheet" href="assets/css/style.css?v=20260920-dl" />
 </head>
 <body>
   <header class="topbar">
@@ -61,13 +61,22 @@
     <div class="create-panel" style="text-align:center;">
       <h2>¡Pedido recibido!</h2>
       <p style="color:var(--text-muted);">Pedido #<span id="order-id"></span> — <span id="order-summary"></span></p>
+      <div class="order-access-box">
+        <p>Guardá el PIN y el link. Cuando el fotógrafo marque el pedido como pagado, vas a poder descargar las originales sin marca de agua.</p>
+        <p class="order-pin-line">PIN: <strong id="order-pin"></strong></p>
+        <input type="text" id="order-link" readonly />
+        <div class="gallery-row-actions" style="justify-content:center;">
+          <button type="button" class="secondary" id="copy-order-link">Copiar link</button>
+          <a href="#" id="open-order-link" class="secondary">Ver mi pedido</a>
+        </div>
+      </div>
       <p style="color:var(--text-muted); margin-top:16px;">El pedido ya está en el panel del fotógrafo. Tocá el botón verde para mandar el pedido por WhatsApp y coordinar el pago.</p>
       <a href="#" id="whatsapp-order-link" class="wa-btn" target="_blank" rel="noopener noreferrer">Enviar pedido por WhatsApp</a>
       <a href="#" id="back-to-gallery" class="admin-link" style="margin-top:20px;">Volver a la galería</a>
     </div>
   </main>
 
-  <script src="assets/js/api.js?v=20260919-ux"></script>
+  <script src="assets/js/api.js?v=20260920-dl"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const slug = params.get('slug');
@@ -150,7 +159,7 @@
       document.getElementById('total-amount').textContent = `$${quote.total.toLocaleString('es-AR')}`;
     }
 
-    function openOrderWhatsApp(order, photoNames, name, email, phone) {
+    function openOrderWhatsApp(order, photoNames, name, email, phone, downloadUrl) {
       const url = buildClientOrderWhatsAppUrl({
         order,
         galleryName: galleryName || order.gallery_name,
@@ -158,6 +167,7 @@
         clientName: name,
         clientEmail: email,
         clientPhone: phone,
+        downloadUrl,
       });
       openWhatsApp(url, document.getElementById('whatsapp-order-link'));
     }
@@ -180,9 +190,13 @@
           body: { clientToken, clientName, clientEmail, clientPhone },
         });
 
+        const downloadUrl = orderAccessUrl(order);
         document.getElementById('checkout-view').style.display = 'none';
         document.getElementById('confirmation-view').style.display = 'block';
         document.getElementById('order-id').textContent = order.id;
+        document.getElementById('order-pin').textContent = order.access_pin || '—';
+        document.getElementById('order-link').value = downloadUrl;
+        document.getElementById('open-order-link').href = downloadUrl || '#';
         document.getElementById('order-summary').textContent = pricePerPhoto
           ? `${order.photo_count} foto(s) por $${Number(order.total_amount).toLocaleString('es-AR')}`
           : `${order.photo_count} foto(s)`;
@@ -190,13 +204,27 @@
         const photoNames = Array.isArray(photos) && photos.length
           ? photos
           : selectedPhotos.map((p) => p.file_name);
-        openOrderWhatsApp(order, photoNames, clientName, clientEmail, clientPhone);
+        openOrderWhatsApp(order, photoNames, clientName, clientEmail, clientPhone, downloadUrl);
       } catch (err) {
         messageEl.textContent = err.message;
         messageEl.className = 'message show error';
       } finally {
         btn.disabled = false;
         btn.textContent = 'Confirmar y enviar por WhatsApp';
+      }
+    });
+
+    document.getElementById('copy-order-link').addEventListener('click', async () => {
+      const value = document.getElementById('order-link').value;
+      if (!value) return;
+      try {
+        await navigator.clipboard.writeText(value);
+        document.getElementById('copy-order-link').textContent = 'Copiado';
+        setTimeout(() => {
+          document.getElementById('copy-order-link').textContent = 'Copiar link';
+        }, 1600);
+      } catch {
+        document.getElementById('order-link').select();
       }
     });
 

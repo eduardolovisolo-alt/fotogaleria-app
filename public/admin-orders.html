@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>FotoGalería Pro — Pedidos</title>
-<link rel="stylesheet" href="assets/css/style.css" />
+<link rel="stylesheet" href="assets/css/style.css?v=20260920-dl" />
 </head>
 <body>
   <header class="topbar">
@@ -54,7 +54,7 @@
     <div id="orders-box" class="empty-state">Cargando...</div>
   </main>
 
-  <script src="assets/js/api.js?v=20260919-ux"></script>
+  <script src="assets/js/api.js?v=20260920-dl"></script>
   <script>
     const session = getSession();
     if (!session) window.location.href = 'login.html';
@@ -135,17 +135,19 @@
       box.className = '';
       try {
         box.innerHTML = orders.map((o) => {
+          const downloadUrl = typeof orderAccessUrl === 'function' ? orderAccessUrl(o) : '';
           const replyUrl = typeof buildPhotographerReplyWhatsAppUrl === 'function'
-            ? buildPhotographerReplyWhatsAppUrl(o, o.gallery_name)
+            ? buildPhotographerReplyWhatsAppUrl(o, o.gallery_name, { downloadUrl })
             : '';
           const photos = (o.items || []).map((item) => item.fileName).filter(Boolean);
           const discount = Number(o.discount_percent) > 0 ? ` · ${Number(o.discount_percent)}% off` : '';
+          const ready = o.status === 'paid' || o.status === 'shipped';
           return `
             <details class="order-line">
               <summary>
                 <div class="order-line-main">
                   <strong>${escapeHtml(o.client_name)}</strong>
-                  <span>#${o.id} · ${escapeHtml(o.gallery_name)} · ${o.photo_count} foto(s)</span>
+                  <span>#${o.id} · ${escapeHtml(o.gallery_name)} · ${o.photo_count} foto(s)${Number(o.full_gallery) ? ' · galería completa' : ''}</span>
                 </div>
                 <span class="badge ${o.status}">${STATUS_LABELS[o.status] || o.status}</span>
                 <span>${Number(o.total_amount) ? `$${Number(o.total_amount).toLocaleString('es-AR')}` : '—'}</span>
@@ -159,10 +161,19 @@
               <div class="order-line-body">
                 <p class="meta">${new Date(o.created_at).toLocaleString('es-AR')}</p>
                 <p class="meta">${escapeHtml(o.client_email)}${o.client_phone ? ` · ${escapeHtml(o.client_phone)}` : ''}</p>
-                <p class="meta">${o.photo_count} foto(s)${Number(o.total_amount) ? ` · $${Number(o.total_amount).toLocaleString('es-AR')}` : ''}${discount}</p>
+                <p class="meta">${o.photo_count} foto(s)${Number(o.total_amount) ? ` · $${Number(o.total_amount).toLocaleString('es-AR')}` : ''}${discount}${o.access_pin ? ` · PIN ${escapeHtml(o.access_pin)}` : ''}</p>
+                <label class="checkbox-field" style="margin-top:12px;">
+                  <input type="checkbox" data-full="${o.id}" ${Number(o.full_gallery) ? 'checked' : ''} onclick="event.stopPropagation()" />
+                  Incluir toda la galería en la descarga
+                </label>
+                ${downloadUrl ? `<div class="share-box" style="margin-top:12px;">
+                  <input type="text" readonly value="${escapeHtml(downloadUrl)}" />
+                  <button type="button" class="secondary" data-copy="${escapeHtml(downloadUrl)}">Copiar link</button>
+                </div>` : ''}
                 <div class="gallery-row-actions" style="margin-top:12px;">
-                  ${replyUrl ? `<a class="wa-btn wa-btn-sm" href="${replyUrl}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ''}
+                  ${replyUrl ? `<a class="wa-btn wa-btn-sm" href="${replyUrl}" target="_blank" rel="noopener noreferrer">${ready ? 'WhatsApp con link' : 'WhatsApp'}</a>` : ''}
                   <a class="secondary" href="admin-gallery.html?slug=${encodeURIComponent(o.gallery_slug)}">Ver galería</a>
+                  ${downloadUrl ? `<a class="secondary" href="${escapeHtml(downloadUrl)}" target="_blank" rel="noopener noreferrer">Ver pedido</a>` : ''}
                 </div>
                 ${photos.length ? `<ul class="order-photos">${photos.map((name) => `<li>${escapeHtml(name)}</li>`).join('')}</ul>` : ''}
               </div>
@@ -175,6 +186,20 @@
         });
         box.querySelectorAll('[data-delete]').forEach((btn) => {
           btn.addEventListener('click', () => deleteOrder(btn.dataset.delete));
+        });
+        box.querySelectorAll('[data-full]').forEach((input) => {
+          input.addEventListener('change', () => updateFullGallery(input.dataset.full, input.checked));
+        });
+        box.querySelectorAll('[data-copy]').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            try {
+              await navigator.clipboard.writeText(btn.dataset.copy);
+              btn.textContent = 'Copiado';
+              setTimeout(() => { btn.textContent = 'Copiar link'; }, 1600);
+            } catch {
+              alert('No se pudo copiar. Seleccioná el link a mano.');
+            }
+          });
         });
       } catch (err) {
         box.className = 'empty-state';
@@ -210,6 +235,20 @@
           method: 'PUT',
           token: session.token,
           body: { status },
+        });
+        await loadOrders();
+      } catch (err) {
+        alert(err.message);
+        loadOrders();
+      }
+    }
+
+    async function updateFullGallery(orderId, fullGallery) {
+      try {
+        await apiRequest(`/api/orders/${orderId}`, {
+          method: 'PUT',
+          token: session.token,
+          body: { fullGallery },
         });
         await loadOrders();
       } catch (err) {

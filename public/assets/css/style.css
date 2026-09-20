@@ -1584,3 +1584,84 @@ body:has(.lightbox:not([hidden])) .whatsapp-float {
     opacity: 1;
   }
 }
+
+.gallery-toolbar {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.gallery-toolbar button.secondary {
+  width: auto;
+}
+
+.selection-bar-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.selection-bar-actions button.secondary {
+  width: auto;
+  padding: 10px 16px;
+}
+
+.order-access-box {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin: 18px 0;
+  text-align: left;
+}
+
+.order-access-box p {
+  color: var(--text-muted);
+  margin: 0 0 12px;
+}
+
+.order-pin-line {
+  font-size: 1.05rem;
+  color: var(--text) !important;
+}
+
+.order-access-box input[type="text"] {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.download-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.download-card img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+
+.download-card a.secondary {
+  text-align: center;
+}
+
+#download-actions button.primary {
+  width: auto;
+}
+
+@media (max-width: 600px) {
+  .selection-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .selection-bar-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

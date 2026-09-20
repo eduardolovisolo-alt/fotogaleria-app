@@ -7,6 +7,17 @@ const {
   sendOrderNotificationToPhotographer,
   sendOrderConfirmationToClient,
 } = require('../utils/mailer');
+const { withDownloadUrls, signedOriginalDownloadUrl } = require('./photoController');
+const {
+  pinsMatch,
+  normalizePin,
+  canDownloadStatus,
+  orderDownloadUrl,
+  publicOrderView,
+  isUnlockBlocked,
+  registerUnlockFailure,
+  clearUnlockFailures,
+} = require('../utils/orderAccess');
 
 const { sameId } = require('../utils/ids');
 
@@ -14,6 +25,11 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function appBaseUrl(req) {
   return (process.env.APP_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+}
+
+function clientIp(req) {
+  const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  return forwarded || req.ip || '';
 }
 
 async function withItems(orders) {
@@ -28,6 +44,24 @@ async function withItems(orders) {
     });
   });
   return orders.map((order) => ({ ...order, items: byOrder[order.id] || [] }));
+}
+
+async function photosForOrder(order) {
+  if (Number(order.full_gallery) === 1) {
+    return photoModel.findByGallery(order.gallery_id);
+  }
+  const items = await orderModel.findItemsByOrderIds([order.id]);
+  const photos = await photoModel.findByIds(items.map((item) => item.photo_id));
+  const byId = new Map(photos.map((photo) => [Number(photo.id), photo]));
+  return items.map((item) => byId.get(Number(item.photo_id))).filter(Boolean);
+}
+
+async function photoBelongsToOrder(order, photoId) {
+  const photo = await photoModel.findById(photoId);
+  if (!photo || photo.gallery_id !== order.gallery_id) return null;
+  if (Number(order.full_gallery) === 1) return photo;
+  const items = await orderModel.findItemsByOrderIds([order.id]);
+  return items.some((item) => Number(item.photo_id) === Number(photo.id)) ? photo : null;
 }
 
 async function createOrder(req, res) {
@@ -66,6 +100,8 @@ async function createOrder(req, res) {
       console.error('order photos error:', photosErr);
     }
 
+    const downloadUrl = orderDownloadUrl(appBaseUrl(req), order.download_token);
+
     try {
       const photographer = await userModel.findById(gallery.admin_id);
       const notifyEmail = process.env.ADMIN_NOTIFY_EMAIL || photographer?.email;
@@ -90,6 +126,7 @@ async function createOrder(req, res) {
         order,
         gallery,
         photoNames,
+        downloadUrl,
       });
     } catch (notifyErr) {
       console.error('order notify error:', notifyErr);
@@ -99,6 +136,7 @@ async function createOrder(req, res) {
       order,
       photos: photoNames,
       galleryName: gallery.name,
+      downloadUrl,
     });
   } catch (err) {
     console.error('createOrder error:', err);
@@ -140,7 +178,7 @@ async function listMyOrders(req, res) {
   }
 }
 
-async function updateOrderStatus(req, res) {
+async function updateOrder(req, res) {
   try {
     const order = await orderModel.findById(req.params.id);
     if (!order) {
@@ -151,15 +189,23 @@ async function updateOrderStatus(req, res) {
       return res.status(404).json({ error: 'Pedido no encontrado.' });
     }
 
-    const { status } = req.body;
-    if (!['pending', 'paid', 'shipped', 'cancelled'].includes(status)) {
-      return res.status(400).json({ error: 'Estado inválido.' });
+    const { status, fullGallery } = req.body;
+    let updated = order;
+
+    if (status !== undefined) {
+      if (!['pending', 'paid', 'shipped', 'cancelled'].includes(status)) {
+        return res.status(400).json({ error: 'Estado inválido.' });
+      }
+      updated = await orderModel.updateStatus(order.id, status);
     }
 
-    const updated = await orderModel.updateStatus(order.id, status);
+    if (fullGallery !== undefined) {
+      updated = await orderModel.updateFullGallery(order.id, !!fullGallery);
+    }
+
     res.json({ order: updated });
   } catch (err) {
-    console.error('updateOrderStatus error:', err);
+    console.error('updateOrder error:', err);
     res.status(500).json({ error: 'Error al actualizar el pedido.' });
   }
 }
@@ -195,11 +241,92 @@ async function updateOrderSettings(req, res) {
   }
 }
 
+async function getDownloadByToken(req, res) {
+  try {
+    const order = await orderModel.findByDownloadToken(req.params.token);
+    if (!order) {
+      return res.status(404).json({ error: 'No encontramos ese pedido.' });
+    }
+    const gallery = await galleryModel.findById(order.gallery_id);
+    const canDownload = canDownloadStatus(order.status);
+    let photos = [];
+    if (canDownload) {
+      const rows = await photosForOrder(order);
+      photos = await Promise.all(rows.map((photo) => withDownloadUrls(photo)));
+    }
+    res.json({
+      order: publicOrderView(order, gallery || {}),
+      canDownload,
+      photos,
+    });
+  } catch (err) {
+    console.error('getDownloadByToken error:', err);
+    res.status(500).json({ error: 'Error al cargar el pedido.' });
+  }
+}
+
+async function downloadOrderFile(req, res) {
+  try {
+    const order = await orderModel.findByDownloadToken(req.params.token);
+    if (!order) {
+      return res.status(404).json({ error: 'No encontramos ese pedido.' });
+    }
+    if (!canDownloadStatus(order.status)) {
+      return res.status(403).json({ error: 'Este pedido todavía no está listo para descargar.' });
+    }
+    const photo = await photoBelongsToOrder(order, req.params.photoId);
+    if (!photo) {
+      return res.status(404).json({ error: 'Esa foto no está en este pedido.' });
+    }
+    const url = await signedOriginalDownloadUrl(photo, 10 * 60);
+    res.redirect(url);
+  } catch (err) {
+    console.error('downloadOrderFile error:', err);
+    res.status(500).json({ error: 'Error al descargar la foto.' });
+  }
+}
+
+async function unlockOrder(req, res) {
+  try {
+    const orderId = parseInt(req.body.orderId, 10);
+    const pin = normalizePin(req.body.pin);
+    if (!orderId || pin.length !== 6) {
+      return res.status(400).json({ error: 'Ingresá el número de pedido y el PIN de 6 dígitos.' });
+    }
+
+    const ip = clientIp(req);
+    if (isUnlockBlocked(ip, orderId)) {
+      return res.status(429).json({ error: 'Demasiados intentos. Probá de nuevo en unos minutos.' });
+    }
+
+    const order = await orderModel.findById(orderId);
+    if (!order || !pinsMatch(order.access_pin, pin)) {
+      registerUnlockFailure(ip, orderId);
+      return res.status(401).json({ error: 'Número de pedido o PIN incorrectos.' });
+    }
+
+    clearUnlockFailures(ip, orderId);
+    const gallery = await galleryModel.findById(order.gallery_id);
+    res.json({
+      token: order.download_token,
+      downloadUrl: orderDownloadUrl(appBaseUrl(req), order.download_token),
+      order: publicOrderView(order, gallery || {}),
+    });
+  } catch (err) {
+    console.error('unlockOrder error:', err);
+    res.status(500).json({ error: 'Error al abrir el pedido.' });
+  }
+}
+
 module.exports = {
   createOrder,
   listGalleryOrders,
   listMyOrders,
-  updateOrderStatus,
+  updateOrder,
+  updateOrderStatus: updateOrder,
   deleteOrder,
   updateOrderSettings,
+  getDownloadByToken,
+  downloadOrderFile,
+  unlockOrder,
 };

@@ -68,6 +68,9 @@ CREATE TABLE IF NOT EXISTS orders (
   discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
   status ENUM('pending', 'paid', 'shipped', 'cancelled') NOT NULL DEFAULT 'pending',
   payment_method ENUM('mercadopago', 'transferencia') NULL,
+  download_token VARCHAR(64) NULL UNIQUE,
+  access_pin VARCHAR(6) NULL,
+  full_gallery TINYINT(1) NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (gallery_id) REFERENCES galleries(id) ON DELETE CASCADE
 );

@@ -6,7 +6,10 @@ const router = express.Router();
 
 router.get('/', protect, requireRole('admin'), orderController.listMyOrders);
 router.put('/settings', protect, requireRole('admin'), orderController.updateOrderSettings);
-router.put('/:id', protect, requireRole('admin'), orderController.updateOrderStatus);
+router.get('/download/:token/file/:photoId', orderController.downloadOrderFile);
+router.get('/download/:token', orderController.getDownloadByToken);
+router.post('/unlock', orderController.unlockOrder);
+router.put('/:id', protect, requireRole('admin'), orderController.updateOrder);
 router.delete('/:id', protect, requireRole('admin'), orderController.deleteOrder);
 
 module.exports = router;

@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>FotoGalería Pro</title>
-<link rel="stylesheet" href="assets/css/style.css" />
+<link rel="stylesheet" href="assets/css/style.css?v=20260920-dl" />
 </head>
 <body>
   <header class="topbar">
@@ -40,6 +40,9 @@
       <h1 id="gallery-name">Cargando...</h1>
       <p class="gallery-author" id="gallery-author" style="display:none;"></p>
       <p>Elegí tus fotos favoritas tocándolas</p>
+      <div class="gallery-toolbar" id="gallery-toolbar" style="display:none;">
+        <button type="button" class="secondary" id="select-all-btn">Seleccionar todas</button>
+      </div>
     </div>
 
     <div class="gallery-grid" id="gallery-grid"></div>
@@ -48,7 +51,10 @@
 
   <div class="selection-bar" id="selection-bar" style="display:none;">
     <span id="selection-count">0 fotos seleccionadas</span>
-    <button class="primary" id="continue-btn">Continuar al pedido</button>
+    <div class="selection-bar-actions">
+      <button class="secondary" id="bar-select-all-btn" type="button">Seleccionar todas</button>
+      <button class="primary" id="continue-btn">Continuar al pedido</button>
+    </div>
   </div>
 
   <div id="lightbox" class="lightbox" hidden>
@@ -66,7 +72,7 @@
     <button class="lightbox-nav lightbox-next" id="lightbox-next" type="button" aria-label="Siguiente">›</button>
   </div>
 
-  <script src="assets/js/api.js?v=20260919-ux"></script>
+  <script src="assets/js/api.js?v=20260920-dl"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const slug = params.get('slug');
@@ -160,7 +166,7 @@
       galleryGrid.innerHTML = '';
       photos.forEach((photo, index) => {
         const card = document.createElement('div');
-        card.className = `client-photo-card${selectedIds.has(photo.id) ? ' selected' : ''}`;
+        card.className = `client-photo-card${selectedIds.has(Number(photo.id)) ? ' selected' : ''}`;
         card.dataset.id = photo.id;
         card.innerHTML = `
           <img class="protected-photo" src="${photo.thumbnailUrl}" alt="${photo.file_name}" loading="lazy" draggable="false" />
@@ -174,6 +180,8 @@
         });
         galleryGrid.appendChild(card);
       });
+      const toolbar = document.getElementById('gallery-toolbar');
+      toolbar.style.display = photos.length ? 'flex' : 'none';
       updateSelectionBar();
     }
 
@@ -199,7 +207,7 @@
       if (!photo) return;
       lightboxImg.src = photo.previewUrl || photo.thumbnailUrl;
       lightboxImg.alt = photo.file_name;
-      const isSelected = selectedIds.has(photo.id);
+      const isSelected = selectedIds.has(Number(photo.id));
       lightboxSelectBtn.textContent = isSelected ? '✓ Seleccionada' : 'Seleccionar';
       lightboxSelectBtn.classList.toggle('selected', isSelected);
     }
@@ -247,14 +255,15 @@
           `/api/galleries/${slug}/selections/mine?clientToken=${clientToken}`,
           { extraHeaders: galleryHeaders() }
         );
-        selectedIds = new Set(selectedPhotoIds);
+        selectedIds = new Set((selectedPhotoIds || []).map(Number));
       } catch {
         selectedIds = new Set();
       }
     }
 
     async function toggleSelect(photoId, card) {
-      const nowSelected = !selectedIds.has(photoId);
+      const id = Number(photoId);
+      const nowSelected = !selectedIds.has(id);
       try {
         await apiRequest(`/api/galleries/${slug}/selections`, {
           method: 'POST',
@@ -262,10 +271,10 @@
           body: { photoId, clientToken, selected: nowSelected },
         });
         if (nowSelected) {
-          selectedIds.add(photoId);
+          selectedIds.add(id);
           card?.classList.add('selected');
         } else {
-          selectedIds.delete(photoId);
+          selectedIds.delete(id);
           card?.classList.remove('selected');
         }
         updateSelectionBar();
@@ -274,9 +283,36 @@
       }
     }
 
+    function updateSelectAllButtons() {
+      const allSelected = currentPhotos.length > 0 && selectedIds.size === currentPhotos.length;
+      const label = allSelected ? 'Quitar selección' : 'Seleccionar todas';
+      document.getElementById('select-all-btn').textContent = label;
+      const barBtn = document.getElementById('bar-select-all-btn');
+      barBtn.textContent = allSelected ? 'Quitar selección' : 'Seleccionar todas';
+    }
+
+    async function setAllSelected(selected) {
+      try {
+        const { selectedPhotoIds } = await apiRequest(`/api/galleries/${slug}/selections/all`, {
+          method: 'POST',
+          extraHeaders: galleryHeaders(),
+          body: { clientToken, selected },
+        });
+        selectedIds = new Set((selectedPhotoIds || []).map(Number));
+        galleryGrid.querySelectorAll('.client-photo-card').forEach((card) => {
+          card.classList.toggle('selected', selectedIds.has(Number(card.dataset.id)));
+        });
+        updateSelectionBar();
+        if (!lightboxEl.hidden) renderLightbox();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
     function updateSelectionBar() {
       const bar = document.getElementById('selection-bar');
       const count = selectedIds.size;
+      updateSelectAllButtons();
       if (count === 0) {
         bar.style.display = 'none';
         document.body.classList.remove('has-selection-bar');
@@ -291,6 +327,15 @@
       const priceText = pricePerPhoto ? ` — $${quote.total.toLocaleString('es-AR')}${discountText}` : '';
       document.getElementById('selection-count').textContent = `${count} foto${count === 1 ? '' : 's'} seleccionada${count === 1 ? '' : 's'}${priceText}`;
     }
+
+    document.getElementById('select-all-btn').addEventListener('click', () => {
+      const allSelected = currentPhotos.length > 0 && selectedIds.size === currentPhotos.length;
+      setAllSelected(!allSelected);
+    });
+    document.getElementById('bar-select-all-btn').addEventListener('click', () => {
+      const allSelected = currentPhotos.length > 0 && selectedIds.size === currentPhotos.length;
+      setAllSelected(!allSelected);
+    });
 
     document.getElementById('continue-btn').addEventListener('click', () => {
       window.location.href = `checkout.html?slug=${encodeURIComponent(slug)}`;
