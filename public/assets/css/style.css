@@ -68,28 +68,6 @@ body {
   width: auto;
 }
 
-.brand-media {
-  font-family: var(--font-display);
-  font-weight: 600;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  font-size: 1.15rem;
-  color: #fff;
-  white-space: nowrap;
-}
-
-.brand-media::after {
-  content: '';
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-left: 8px;
-  border: 1.5px solid var(--accent-2);
-  border-radius: 50%;
-  vertical-align: middle;
-  transform: translateY(-1px);
-}
-
 .topbar nav a {
   color: var(--text-muted);
   text-decoration: none;
@@ -778,11 +756,6 @@ a.secondary:hover {
 
   .brand img {
     height: 32px;
-  }
-
-  .brand-media {
-    font-size: 0.92rem;
-    letter-spacing: 0.14em;
   }
 
   .topbar nav a {
