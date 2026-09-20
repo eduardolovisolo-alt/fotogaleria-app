@@ -3,12 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>FotoGalería Pro — Contacto</title>
-<link rel="stylesheet" href="assets/css/style.css" />
+<title>Punto Directo Media — Contacto</title>
+<link rel="stylesheet" href="assets/css/style.css?v=20260920-colores" />
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="index.html">Foto<span>Galería</span> Pro</a>
+    <a class="brand" href="index.html" aria-label="Punto Directo Media">
+      <img src="assets/img/punto-directo.png" alt="" />
+      <span class="brand-media">Media</span>
+    </a>
     <nav>
       <a href="index.html">Inicio</a>
       <a href="login.html">Ingresar</a>
@@ -37,7 +40,7 @@
         </div>
         <div class="field">
           <label for="msg">Mensaje</label>
-          <textarea id="msg" rows="4" required style="width:100%; padding:11px 14px; background:#0e0e10; border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:0.95rem; font-family:inherit; resize:vertical;"></textarea>
+          <textarea id="msg" rows="4" required style="width:100%; padding:11px 14px; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:0.95rem; font-family:inherit; resize:vertical;"></textarea>
         </div>
         <button type="submit" class="primary" id="submit-btn">Enviar mensaje</button>
       </form>

@@ -1,15 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap');
+
 :root {
-  --bg: #0e0e10;
-  --bg-panel: #17171a;
-  --border: #2a2a2e;
-  --text: #f2f0ea;
-  --text-muted: #9a9a9f;
-  --accent: #c9a15a;
-  --accent-hover: #dbb56f;
-  --danger: #e0665c;
-  --success: #6ec18f;
+  --bg: #12121f;
+  --bg-panel: #1c1c32;
+  --bg-elevated: #2c2a48;
+  --border: #3a3658;
+  --text: #ffffff;
+  --text-muted: #9a96b8;
+  --accent: #ff4b6e;
+  --accent-hover: #ff6b88;
+  --accent-2: #3ef5d0;
+  --accent-purple: #9860e8;
+  --on-accent: #ffffff;
+  --danger: #ff4b6e;
+  --success: #3ef5d0;
   --radius: 10px;
-  --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font: 'Barlow', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-display: 'Barlow Condensed', 'Segoe UI', sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -26,21 +33,61 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 40px;
-  border-bottom: 1px solid var(--border);
+  padding: 16px 40px;
+  border-bottom: none;
+  position: relative;
+  background: rgba(12, 12, 24, 0.92);
+}
+
+.topbar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent) 0 62%, var(--accent-2) 62%);
 }
 
 .brand {
-  font-size: 1.3rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.05rem;
+  letter-spacing: 0;
+  text-transform: none;
   font-weight: 600;
   color: inherit;
   text-decoration: none;
+  min-width: 0;
 }
 
-.brand span {
-  color: var(--accent);
+.brand img {
+  display: block;
+  height: 42px;
+  width: auto;
+}
+
+.brand-media {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-size: 1.15rem;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.brand-media::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 8px;
+  border: 1.5px solid var(--accent-2);
+  border-radius: 50%;
+  vertical-align: middle;
+  transform: translateY(-1px);
 }
 
 .topbar nav a {
@@ -66,6 +113,7 @@ body {
 .card {
   background: var(--bg-panel);
   border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
   border-radius: var(--radius);
   padding: 40px;
   width: 100%;
@@ -97,7 +145,7 @@ body {
 .field select {
   width: 100%;
   padding: 11px 14px;
-  background: #0e0e10;
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
@@ -109,7 +157,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
-  background: #111;
+  background: var(--bg);
 }
 
 .watermark-preview-wrap img {
@@ -122,7 +170,7 @@ body {
 .field input {
   width: 100%;
   padding: 11px 14px;
-  background: #0e0e10;
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
@@ -141,7 +189,7 @@ button.primary {
   background: var(--accent);
   border: none;
   border-radius: 8px;
-  color: #1a1a1a;
+  color: var(--on-accent);
   font-weight: 600;
   font-size: 0.95rem;
   cursor: pointer;
@@ -186,15 +234,15 @@ button.primary:disabled {
 }
 
 .message.error {
-  background: rgba(224, 102, 92, 0.12);
+  background: rgba(255, 75, 110, 0.12);
   color: var(--danger);
-  border: 1px solid rgba(224, 102, 92, 0.3);
+  border: 1px solid rgba(255, 75, 110, 0.3);
 }
 
 .message.success {
-  background: rgba(110, 193, 143, 0.12);
+  background: rgba(62, 245, 208, 0.12);
   color: var(--success);
-  border: 1px solid rgba(110, 193, 143, 0.3);
+  border: 1px solid rgba(62, 245, 208, 0.3);
 }
 
 .dashboard {
@@ -218,7 +266,7 @@ button.primary:disabled {
   height: 56px;
   border-radius: 50%;
   background: var(--accent);
-  color: #1a1a1a;
+  color: var(--on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -242,7 +290,7 @@ button.primary:disabled {
   margin-top: 8px;
   padding: 3px 10px;
   border-radius: 999px;
-  background: rgba(201, 161, 90, 0.15);
+  background: rgba(255, 75, 110, 0.15);
   color: var(--accent);
   font-size: 0.75rem;
   text-transform: uppercase;
@@ -255,7 +303,7 @@ button.primary:disabled {
   margin-top: 24px;
   padding: 12px;
   border-radius: 8px;
-  background: rgba(201, 161, 90, 0.1);
+  background: rgba(255, 75, 110, 0.12);
   color: var(--accent);
   text-decoration: none;
   font-weight: 600;
@@ -263,7 +311,7 @@ button.primary:disabled {
 }
 
 .admin-link:hover {
-  background: rgba(201, 161, 90, 0.18);
+  background: rgba(255, 75, 110, 0.2);
 }
 
 .logout-btn {
@@ -507,29 +555,29 @@ a.secondary:hover {
 }
 
 .badge.public {
-  background: rgba(110, 193, 143, 0.15);
+  background: rgba(62, 245, 208, 0.15);
   color: var(--success);
 }
 
 .badge.private,
 .badge.cancelled {
-  background: rgba(224, 102, 92, 0.15);
+  background: rgba(255, 75, 110, 0.15);
   color: var(--danger);
 }
 
 .badge.pending {
-  background: rgba(201, 161, 90, 0.15);
-  color: var(--accent);
+  background: rgba(152, 96, 232, 0.18);
+  color: #cbb0ff;
 }
 
 .badge.paid {
-  background: rgba(110, 193, 143, 0.15);
+  background: rgba(62, 245, 208, 0.15);
   color: var(--success);
 }
 
 .badge.shipped {
-  background: rgba(138, 160, 181, 0.2);
-  color: #9bb4c9;
+  background: rgba(62, 245, 208, 0.1);
+  color: var(--accent-2);
 }
 
 .gallery-row-actions {
@@ -593,7 +641,7 @@ a.secondary:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #0e0e10;
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 14px;
@@ -678,7 +726,7 @@ a.secondary:hover {
 .client-photo-card.selected .select-indicator {
   background: var(--accent);
   border-color: var(--accent);
-  color: #1a1a1a;
+  color: var(--on-accent);
 }
 
 .selection-bar {
@@ -725,6 +773,16 @@ a.secondary:hover {
   .brand {
     font-size: 1.05rem;
     white-space: nowrap;
+    gap: 8px;
+  }
+
+  .brand img {
+    height: 32px;
+  }
+
+  .brand-media {
+    font-size: 0.92rem;
+    letter-spacing: 0.14em;
   }
 
   .topbar nav a {
@@ -817,7 +875,7 @@ a.secondary:hover {
   z-index: 5;
   background: var(--accent);
   border: none;
-  color: #1a1a1a;
+  color: var(--on-accent);
   min-width: 92px;
   height: 42px;
   border-radius: 8px;
@@ -852,7 +910,7 @@ a.secondary:hover {
 
 .lightbox-select {
   background: var(--accent);
-  color: #1a1a1a;
+  color: var(--on-accent);
   border: none;
   padding: 10px 28px;
   border-radius: 8px;
@@ -870,7 +928,7 @@ a.secondary:hover {
   z-index: 5;
   background: var(--accent);
   border: none;
-  color: #1a1a1a;
+  color: var(--on-accent);
   width: 52px;
   height: 52px;
   border-radius: 50%;
@@ -920,7 +978,7 @@ a.secondary:hover {
 }
 
 .order-row select {
-  background: #0e0e10;
+  background: var(--bg);
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: 6px;
@@ -1018,7 +1076,7 @@ body:has(.lightbox:not([hidden])) .whatsapp-float {
 }
 
 .hero-kicker {
-  color: var(--accent);
+  color: var(--accent-2);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-size: 0.75rem;
@@ -1060,7 +1118,7 @@ body:has(.lightbox:not([hidden])) .whatsapp-float {
 
 .cta-primary {
   background: var(--accent);
-  color: #1a1a1a;
+  color: var(--on-accent);
 }
 
 .cta-primary:hover {
@@ -1087,9 +1145,14 @@ body:has(.lightbox:not([hidden])) .whatsapp-float {
   scroll-margin-top: 20px;
 }
 
-.home-section h2 {
+.home-section > h2 {
   margin: 0 0 22px;
   font-size: 1.35rem;
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-left: 4px solid var(--accent);
+  padding-left: 12px;
 }
 
 .steps-grid,
@@ -1109,14 +1172,38 @@ body:has(.lightbox:not([hidden])) .whatsapp-float {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.step-card::before,
+.split-card:first-child::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent);
+}
+
+.split-card:last-child::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent-2);
 }
 
 .step-num {
   display: block;
-  color: var(--accent);
+  color: var(--accent-2);
   font-size: 0.78rem;
   letter-spacing: 0.12em;
   margin-bottom: 12px;
+  font-family: var(--font-display);
 }
 
 .step-card h3,
@@ -1427,6 +1514,9 @@ body:has(.lightbox:not([hidden])) .whatsapp-float {
   font-size: clamp(1.35rem, 3.4vw, 1.85rem);
   font-weight: 650;
   line-height: 1.25;
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .catalog-intro p {
@@ -1445,8 +1535,12 @@ body:has(.lightbox:not([hidden])) .whatsapp-float {
   margin: 0 4px 12px;
   font-size: clamp(1.2rem, 2.8vw, 1.6rem);
   font-weight: 650;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.04em;
   line-height: 1.2;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  border-left: 4px solid var(--accent);
+  padding-left: 10px;
 }
 
 .catalog-grid {
@@ -1492,7 +1586,7 @@ body:has(.lightbox:not([hidden])) .whatsapp-float {
   right: 0;
   bottom: 0;
   padding: 36px 10px 10px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.82));
+  background: linear-gradient(transparent, rgba(24, 10, 48, 0.92) 55%, rgba(88, 20, 70, 0.92));
   z-index: 2;
   pointer-events: none;
   text-align: left;
@@ -1560,7 +1654,7 @@ body:has(.lightbox:not([hidden])) .whatsapp-float {
 }
 
 .photo-card .cover-btn.active {
-  color: #1a1a1a;
+  color: var(--on-accent);
   background: var(--accent);
 }
 

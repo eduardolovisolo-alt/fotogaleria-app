@@ -90,7 +90,7 @@ function injectWhatsAppButton() {
 
   const link = document.createElement('a');
   link.className = 'whatsapp-float';
-  link.href = whatsappHref('Hola! Vengo de FotoGalería Pro.');
+  link.href = whatsappHref('Hola! Vengo de Punto Directo Media.');
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
   link.setAttribute('aria-label', 'Escribinos por WhatsApp');

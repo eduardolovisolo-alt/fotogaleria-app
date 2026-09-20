@@ -55,7 +55,7 @@ async function ensureSchema() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS watermark_settings (
       admin_id INT PRIMARY KEY,
-      text VARCHAR(80) NOT NULL DEFAULT 'FotoGalería Pro',
+      text VARCHAR(80) NOT NULL DEFAULT 'Punto Directo Media',
       pattern VARCHAR(20) NOT NULL DEFAULT 'diagonal',
       texture VARCHAR(20) NOT NULL DEFAULT 'soft',
       design VARCHAR(20) NOT NULL DEFAULT 'text',
