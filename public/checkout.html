@@ -14,6 +14,7 @@
     </a>
     <nav>
       <a href="index.html">← Volver a galerías</a>
+      <a href="pedido.html">Mi pedido</a>
       <a href="#" id="back-link">Volver a la galería</a>
     </nav>
   </header>
@@ -65,7 +66,7 @@
       <h2>¡Pedido recibido!</h2>
       <p style="color:var(--text-muted);">Pedido #<span id="order-id"></span> — <span id="order-summary"></span></p>
       <div class="order-access-box">
-        <p>Guardá el PIN y el link. Cuando el fotógrafo marque el pedido como pagado, vas a poder descargar las originales sin marca de agua.</p>
+        <p>El link abre el pedido directo. El PIN se usa solo si perdés el link: entrá a <a href="pedido.html">Mi pedido</a> y poné el número y el PIN.</p>
         <p class="order-pin-line">PIN: <strong id="order-pin"></strong></p>
         <input type="text" id="order-link" readonly />
         <div class="gallery-row-actions" style="justify-content:center;">
@@ -79,7 +80,7 @@
     </div>
   </main>
 
-  <script src="assets/js/api.js?v=20260920-dl"></script>
+  <script src="assets/js/api.js?v=20260920-pin"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const slug = params.get('slug');

@@ -1715,6 +1715,15 @@ body:has(.lightbox:not([hidden])) .whatsapp-float {
   margin: 0 0 12px;
 }
 
+.order-access-box a {
+  color: var(--accent-2);
+}
+
+.order-access-box code {
+  color: var(--text);
+  font-size: 0.88em;
+}
+
 .order-pin-line {
   font-size: 1.05rem;
   color: var(--text) !important;
