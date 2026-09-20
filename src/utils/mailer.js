@@ -95,9 +95,15 @@ async function sendOrderNotificationToPhotographer({ to, photographerName, clien
   });
 }
 
-async function sendOrderConfirmationToClient({ to, clientName, order, gallery, photoNames }) {
+async function sendOrderConfirmationToClient({ to, clientName, order, gallery, photoNames, downloadUrl }) {
   const photosHtml = photoNames.length
     ? `<ul>${photoNames.map((name) => `<li>${escapeHtml(name)}</li>`).join('')}</ul>`
+    : '';
+  const accessHtml = order.access_pin
+    ? `<p><strong>Pedido:</strong> #${order.id}<br/><strong>PIN:</strong> ${escapeHtml(order.access_pin)}</p>`
+    : '';
+  const linkHtml = downloadUrl
+    ? `<p>Cuando el fotógrafo marque el pedido como pagado, descargá las originales acá:<br/><a href="${escapeHtml(downloadUrl)}">${escapeHtml(downloadUrl)}</a></p>`
     : '';
 
   return sendMailSafe({
@@ -107,7 +113,9 @@ async function sendOrderConfirmationToClient({ to, clientName, order, gallery, p
       <p>Hola ${escapeHtml(clientName)},</p>
       <p>Recibimos tu pedido de <strong>${order.photo_count}</strong> foto(s) de <strong>${escapeHtml(gallery.name)}</strong>.</p>
       <p><strong>Total:</strong> $${formatMoney(order.total_amount)}</p>
+      ${accessHtml}
       ${photosHtml}
+      ${linkHtml}
       <p>Nos vamos a poner en contacto para coordinar el pago y la entrega.</p>
     `,
   });

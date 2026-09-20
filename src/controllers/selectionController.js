@@ -42,4 +42,20 @@ async function getMySelections(req, res) {
   }
 }
 
-module.exports = { toggleSelection, getMySelections };
+async function setAllSelections(req, res) {
+  try {
+    const { clientToken, selected } = req.body;
+    if (!clientToken) {
+      return res.status(400).json({ error: 'Falta clientToken.' });
+    }
+    const selectedPhotoIds = selected
+      ? await selectionModel.addAll(req.gallery.id, clientToken)
+      : await selectionModel.removeAll(req.gallery.id, clientToken);
+    res.json({ selectedPhotoIds });
+  } catch (err) {
+    console.error('setAllSelections error:', err);
+    res.status(500).json({ error: 'Error al actualizar la selección.' });
+  }
+}
+
+module.exports = { toggleSelection, getMySelections, setAllSelections };

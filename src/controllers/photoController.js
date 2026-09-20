@@ -7,10 +7,12 @@ const photoModel = require('../models/photoModel');
 const galleryModel = require('../models/galleryModel');
 const { watermarkBuffer } = require('../utils/watermark');
 const { settingsForAdmin } = require('./watermarkController');
+const { contentDisposition } = require('../utils/orderAccess');
 
 const THUMBNAIL_WIDTH = 400;
 const PREVIEW_WIDTH = 1600;
 const SIGNED_URL_TTL_SECONDS = 60 * 60; // 1 hora
+const DOWNLOAD_URL_TTL_SECONDS = 60 * 60 * 2;
 
 async function uploadPhoto(req, res) {
   try {
@@ -150,4 +152,43 @@ async function withSignedUrls(photo, includeOriginal) {
   return { ...photo, ...urls };
 }
 
-module.exports = { uploadPhoto, listPhotos, deletePhoto, withSignedUrls };
+async function signedOriginalDownloadUrl(photo, ttlSeconds = DOWNLOAD_URL_TTL_SECONDS) {
+  return getSignedUrl(
+    r2,
+    new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: photo.original_key,
+      ResponseContentDisposition: contentDisposition(photo.file_name),
+      ResponseContentType: 'application/octet-stream',
+    }),
+    { expiresIn: ttlSeconds }
+  );
+}
+
+async function withDownloadUrls(photo) {
+  const [thumbnailUrl, downloadUrl] = await Promise.all([
+    getSignedUrl(
+      r2,
+      new GetObjectCommand({ Bucket: BUCKET_NAME, Key: photo.thumbnail_key }),
+      { expiresIn: SIGNED_URL_TTL_SECONDS }
+    ),
+    signedOriginalDownloadUrl(photo),
+  ]);
+  return {
+    id: photo.id,
+    fileName: photo.file_name,
+    width: photo.width,
+    height: photo.height,
+    thumbnailUrl,
+    downloadUrl,
+  };
+}
+
+module.exports = {
+  uploadPhoto,
+  listPhotos,
+  deletePhoto,
+  withSignedUrls,
+  withDownloadUrls,
+  signedOriginalDownloadUrl,
+};

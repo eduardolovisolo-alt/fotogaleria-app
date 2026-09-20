@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FotoGalería Pro — Mi pedido</title>
+<link rel="stylesheet" href="assets/css/style.css?v=20260920-dl" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">Foto<span>Galería</span> Pro</a>
+    <nav>
+      <a href="index.html">← Volver a galerías</a>
+    </nav>
+  </header>
+
+  <main class="admin-page" id="unlock-view">
+    <div class="page-header">
+      <h1>Tu pedido</h1>
+    </div>
+    <div class="create-panel" style="max-width:480px; margin:0 auto;">
+      <p class="subtitle" style="margin-top:0;">Si te pasaron un link, abrilo directo. Si no, usá el número de pedido y el PIN de 6 dígitos.</p>
+      <div id="unlock-message" class="message"></div>
+      <form id="unlock-form">
+        <div class="field">
+          <label for="order-id">Número de pedido</label>
+          <input type="text" id="order-id" inputmode="numeric" autocomplete="off" required />
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <label for="order-pin">PIN</label>
+          <input type="text" id="order-pin" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required />
+        </div>
+        <button type="submit" class="primary" id="unlock-btn" style="margin-top:20px;">Ver pedido</button>
+      </form>
+    </div>
+  </main>
+
+  <main class="admin-page" id="order-view" style="display:none;">
+    <div class="page-header">
+      <h1 id="order-title">Pedido</h1>
+    </div>
+    <p class="subtitle" id="order-meta"></p>
+    <div class="order-access-box" id="status-box"></div>
+    <div id="download-actions" class="gallery-row-actions" style="display:none; margin: 8px 0 22px;"></div>
+    <div class="gallery-grid" id="download-grid"></div>
+  </main>
+
+  <script src="assets/js/api.js?v=20260920-dl"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const tokenFromUrl = params.get('c') || '';
+    const STATUS_LABELS = {
+      pending: 'Pendiente de pago',
+      paid: 'Pagado',
+      shipped: 'Listo / enviado',
+      cancelled: 'Cancelado',
+    };
+
+    function showMessage(text, type) {
+      const el = document.getElementById('unlock-message');
+      el.textContent = text;
+      el.className = `message show ${type}`;
+    }
+
+    function sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async function loadByToken(token) {
+      const data = await apiRequest(`/api/orders/download/${encodeURIComponent(token)}`);
+      renderOrder(data, token);
+    }
+
+    function fileUrl(token, photoId) {
+      return `/api/orders/download/${encodeURIComponent(token)}/file/${encodeURIComponent(photoId)}`;
+    }
+
+    async function downloadAll(token, photos) {
+      const btn = document.getElementById('download-all-btn');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Descargando...';
+      }
+      for (let i = 0; i < photos.length; i += 1) {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = fileUrl(token, photos[i].id);
+        document.body.appendChild(iframe);
+        if (btn) btn.textContent = `Descargando ${i + 1} de ${photos.length}...`;
+        await sleep(900);
+        setTimeout(() => iframe.remove(), 8000);
+      }
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Descargar todas';
+      }
+    }
+
+    function renderOrder(data, token) {
+      const order = data.order;
+      document.getElementById('unlock-view').style.display = 'none';
+      document.getElementById('order-view').style.display = 'block';
+      document.getElementById('order-title').textContent = `Pedido #${order.id}`;
+      const countLabel = order.fullGallery ? 'toda la galería' : `${order.photoCount} foto${order.photoCount === 1 ? '' : 's'}`;
+      document.getElementById('order-meta').textContent = `${order.galleryName} · ${countLabel}${order.totalAmount ? ` · $${Number(order.totalAmount).toLocaleString('es-AR')}` : ''}`;
+
+      const statusBox = document.getElementById('status-box');
+      const pinLine = order.accessPin ? `<p class="order-pin-line">PIN: <strong>${order.accessPin}</strong></p>` : '';
+      if (order.status === 'cancelled') {
+        statusBox.innerHTML = `<p>Este pedido fue cancelado.</p>${pinLine}`;
+      } else if (data.canDownload) {
+        statusBox.innerHTML = `
+          <p>Estado: <strong>${STATUS_LABELS[order.status] || order.status}</strong>. Ya podés descargar las originales, en máxima calidad y sin marca de agua.</p>
+          ${pinLine}
+        `;
+      } else {
+        statusBox.innerHTML = `
+          <p>Estado: <strong>${STATUS_LABELS[order.status] || order.status}</strong>. Cuando el fotógrafo marque el pedido como pagado, acá van a aparecer las descargas.</p>
+          ${pinLine}
+          <p class="meta">Guardá este link o el PIN para volver a entrar.</p>
+        `;
+      }
+
+      const actions = document.getElementById('download-actions');
+      const grid = document.getElementById('download-grid');
+      if (!data.canDownload || !data.photos.length) {
+        actions.style.display = 'none';
+        grid.innerHTML = '';
+        return;
+      }
+
+      actions.style.display = 'flex';
+      actions.innerHTML = `
+        <button type="button" class="primary" id="download-all-btn">Descargar todas</button>
+      `;
+      document.getElementById('download-all-btn').addEventListener('click', () => downloadAll(token, data.photos));
+
+      grid.innerHTML = data.photos.map((photo) => `
+        <div class="download-card">
+          <img src="${photo.thumbnailUrl}" alt="${photo.fileName}" loading="lazy" />
+          <a class="secondary" href="${fileUrl(token, photo.id)}">Descargar</a>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('unlock-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('unlock-btn');
+      btn.disabled = true;
+      try {
+        const { token } = await apiRequest('/api/orders/unlock', {
+          method: 'POST',
+          body: {
+            orderId: document.getElementById('order-id').value.trim(),
+            pin: document.getElementById('order-pin').value.trim(),
+          },
+        });
+        const next = new URL(window.location.href);
+        next.searchParams.set('c', token);
+        window.history.replaceState({}, '', next);
+        await loadByToken(token);
+      } catch (err) {
+        showMessage(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    if (tokenFromUrl) {
+      document.getElementById('unlock-view').style.display = 'none';
+      loadByToken(tokenFromUrl).catch((err) => {
+        document.getElementById('unlock-view').style.display = 'block';
+        document.getElementById('order-view').style.display = 'none';
+        showMessage(err.message || 'No encontramos ese pedido.', 'error');
+      });
+    }
+  </script>
+</body>
+</html>

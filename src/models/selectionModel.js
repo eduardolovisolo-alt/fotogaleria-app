@@ -22,6 +22,23 @@ async function findByClient(galleryId, clientToken) {
   return rows.map((r) => r.photo_id);
 }
 
+async function addAll(galleryId, clientToken) {
+  await pool.query(
+    `INSERT IGNORE INTO selections (gallery_id, photo_id, client_token)
+     SELECT ?, id, ? FROM photos WHERE gallery_id = ?`,
+    [galleryId, clientToken, galleryId]
+  );
+  return findByClient(galleryId, clientToken);
+}
+
+async function removeAll(galleryId, clientToken) {
+  await pool.query(
+    'DELETE FROM selections WHERE gallery_id = ? AND client_token = ?',
+    [galleryId, clientToken]
+  );
+  return [];
+}
+
 async function findByGallery(galleryId) {
   const [rows] = await pool.query(
     `SELECT s.photo_id, s.client_token, s.created_at, p.file_name
@@ -34,4 +51,4 @@ async function findByGallery(galleryId) {
   return rows;
 }
 
-module.exports = { add, remove, findByClient, findByGallery };
+module.exports = { add, remove, addAll, removeAll, findByClient, findByGallery };

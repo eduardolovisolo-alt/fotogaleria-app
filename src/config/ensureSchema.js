@@ -1,4 +1,5 @@
 const pool = require('./db');
+const { generateDownloadToken, generateAccessPin } = require('../utils/orderAccess');
 
 async function addColumn(sql) {
   try {
@@ -10,6 +11,30 @@ async function addColumn(sql) {
   }
 }
 
+async function addIndex(sql) {
+  try {
+    await pool.query(sql);
+  } catch (err) {
+    if (err.code !== 'ER_DUP_KEYNAME' && err.errno !== 1061) {
+      throw err;
+    }
+  }
+}
+
+async function backfillOrderAccess() {
+  const [rows] = await pool.query(
+    `SELECT id, download_token, access_pin
+     FROM orders
+     WHERE download_token IS NULL OR download_token = '' OR access_pin IS NULL OR access_pin = ''`
+  );
+  for (const row of rows) {
+    await pool.query(
+      'UPDATE orders SET download_token = ?, access_pin = ? WHERE id = ?',
+      [row.download_token || generateDownloadToken(), row.access_pin || generateAccessPin(), row.id]
+    );
+  }
+}
+
 async function ensureSchema() {
   await addColumn('ALTER TABLE galleries ADD COLUMN cover_photo_id INT NULL');
   await addColumn('ALTER TABLE galleries ADD COLUMN access_username VARCHAR(80) NULL');
@@ -18,6 +43,15 @@ async function ensureSchema() {
   await addColumn('ALTER TABLE galleries ADD COLUMN discount_tiers TEXT NULL');
   await addColumn('ALTER TABLE users ADD COLUMN order_auto_delete_days INT NULL');
   await addColumn('ALTER TABLE orders ADD COLUMN discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0');
+  await addColumn('ALTER TABLE orders ADD COLUMN download_token VARCHAR(64) NULL');
+  await addColumn('ALTER TABLE orders ADD COLUMN access_pin VARCHAR(6) NULL');
+  await addColumn('ALTER TABLE orders ADD COLUMN full_gallery TINYINT(1) NOT NULL DEFAULT 0');
+  try {
+    await backfillOrderAccess();
+    await addIndex('CREATE UNIQUE INDEX uniq_orders_download_token ON orders (download_token)');
+  } catch (err) {
+    console.error('ensure order download access:', err.message);
+  }
   await pool.query(`
     CREATE TABLE IF NOT EXISTS watermark_settings (
       admin_id INT PRIMARY KEY,

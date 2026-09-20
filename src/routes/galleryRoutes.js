@@ -53,6 +53,7 @@ router.delete(
 router.get('/:slug', loadGallery, checkGalleryAccessFlag, galleryController.getGalleryInfo);
 router.post('/:slug/unlock', loadGallery, galleryController.unlockGallery);
 router.get('/:slug/photos', loadGallery, requireGalleryAccess, photoController.listPhotos);
+router.post('/:slug/selections/all', loadGallery, requireGalleryAccess, selectionController.setAllSelections);
 router.post('/:slug/selections', loadGallery, requireGalleryAccess, selectionController.toggleSelection);
 router.get('/:slug/selections/mine', loadGallery, requireGalleryAccess, selectionController.getMySelections);
 router.post('/:slug/orders', loadGallery, requireGalleryAccess, orderController.createOrder);
