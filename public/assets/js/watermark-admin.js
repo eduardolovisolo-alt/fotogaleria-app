@@ -4,7 +4,7 @@ function bindWatermarkAdmin(session) {
 
   function watermarkPreviewUrl() {
     const params = new URLSearchParams({
-      text: document.getElementById('wm-text').value.trim() || 'FotoGalería Pro',
+      text: document.getElementById('wm-text').value.trim() || 'Punto Directo Media',
       design: document.getElementById('wm-design').value,
       pattern: document.getElementById('wm-pattern').value,
       texture: document.getElementById('wm-texture').value,

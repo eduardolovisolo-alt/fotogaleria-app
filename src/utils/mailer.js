@@ -61,7 +61,7 @@ async function sendMailSafe(options) {
 async function sendPasswordResetEmail(to, resetUrl) {
   await sendMail({
     to,
-    subject: 'Recuperar contraseña - FotoGalería Pro',
+    subject: 'Recuperar contraseña - Punto Directo Media',
     html: `
       <p>Recibimos un pedido para restablecer tu contraseña.</p>
       <p><a href="${escapeHtml(resetUrl)}">Hacé click acá para elegir una nueva contraseña</a></p>

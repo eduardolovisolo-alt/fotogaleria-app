@@ -41,7 +41,7 @@ async function settingsForAdmin(adminId) {
   } catch (err) {
     console.error('watermark settings fallback:', err);
     return {
-      text: 'FotoGalería Pro',
+      text: 'Punto Directo Media',
       pattern: 'diagonal',
       texture: 'strong',
       design: 'text',

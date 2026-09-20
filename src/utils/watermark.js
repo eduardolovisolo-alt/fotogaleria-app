@@ -1,7 +1,7 @@
 const sharp = require('sharp');
 
 const DEFAULTS = {
-  text: 'FotoGalería Pro',
+  text: 'Punto Directo Media',
   pattern: 'diagonal',
   texture: 'strong',
   design: 'text',

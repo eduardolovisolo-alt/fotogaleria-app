@@ -1,7 +1,7 @@
 const pool = require('../config/db');
 
 const DEFAULTS = {
-  text: 'FotoGalería Pro',
+  text: 'Punto Directo Media',
   pattern: 'diagonal',
   texture: 'strong',
   design: 'text',
