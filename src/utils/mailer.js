@@ -102,8 +102,12 @@ async function sendOrderConfirmationToClient({ to, clientName, order, gallery, p
   const accessHtml = order.access_pin
     ? `<p><strong>Pedido:</strong> #${order.id}<br/><strong>PIN:</strong> ${escapeHtml(order.access_pin)}</p>`
     : '';
+  const pinPageUrl = downloadUrl ? String(downloadUrl).split('?')[0] : '';
   const linkHtml = downloadUrl
-    ? `<p>Cuando el fotógrafo marque el pedido como pagado, descargá las originales acá:<br/><a href="${escapeHtml(downloadUrl)}">${escapeHtml(downloadUrl)}</a></p>`
+    ? `<p>Cuando el fotógrafo marque el pedido como pagado, descargá las originales con este link:<br/><a href="${escapeHtml(downloadUrl)}">${escapeHtml(downloadUrl)}</a></p>`
+    : '';
+  const pinHtml = pinPageUrl
+    ? `<p>Si el link no abre, entrá a <a href="${escapeHtml(pinPageUrl)}">Mi pedido</a> y usá el número #${order.id} con el PIN.</p>`
     : '';
 
   return sendMailSafe({
@@ -116,6 +120,7 @@ async function sendOrderConfirmationToClient({ to, clientName, order, gallery, p
       ${accessHtml}
       ${photosHtml}
       ${linkHtml}
+      ${pinHtml}
       <p>Nos vamos a poner en contacto para coordinar el pago y la entrega.</p>
     `,
   });

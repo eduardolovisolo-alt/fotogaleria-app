@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Punto Directo Media — Mi pedido</title>
-<link rel="stylesheet" href="assets/css/style.css?v=20260920-colores" />
+<link rel="stylesheet" href="assets/css/style.css?v=20260920-pin" />
 </head>
 <body>
   <header class="topbar">
@@ -13,16 +13,17 @@
       <span class="brand-media">Media</span>
     </a>
     <nav>
-      <a href="index.html">← Volver a galerías</a>
+      <a href="index.html">Galerías</a>
+      <a href="pedido.html">Mi pedido</a>
     </nav>
   </header>
 
   <main class="admin-page" id="unlock-view">
     <div class="page-header">
-      <h1>Tu pedido</h1>
+      <h1>Mi pedido</h1>
     </div>
     <div class="create-panel" style="max-width:480px; margin:0 auto;">
-      <p class="subtitle" style="margin-top:0;">Si te pasaron un link, abrilo directo. Si no, usá el número de pedido y el PIN de 6 dígitos.</p>
+      <p class="subtitle" style="margin-top:0;">Acá se usa el PIN. Ingresá el número de pedido y el PIN de 6 dígitos. Si te mandaron un link con <code>?c=</code>, no hace falta: ese link ya abre el pedido.</p>
       <div id="unlock-message" class="message"></div>
       <form id="unlock-form">
         <div class="field">
@@ -48,7 +49,7 @@
     <div class="gallery-grid" id="download-grid"></div>
   </main>
 
-  <script src="assets/js/api.js?v=20260920-dl"></script>
+  <script src="assets/js/api.js?v=20260920-pin"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const tokenFromUrl = params.get('c') || '';
@@ -109,18 +110,20 @@
 
       const statusBox = document.getElementById('status-box');
       const pinLine = order.accessPin ? `<p class="order-pin-line">PIN: <strong>${order.accessPin}</strong></p>` : '';
+      const pinHelp = `<p class="meta">El PIN no se usa en esta pantalla. Si perdés el link, entrá a <a href="pedido.html">Mi pedido</a> y poné el número #${order.id} con ese PIN.</p>`;
       if (order.status === 'cancelled') {
-        statusBox.innerHTML = `<p>Este pedido fue cancelado.</p>${pinLine}`;
+        statusBox.innerHTML = `<p>Este pedido fue cancelado.</p>${pinLine}${pinHelp}`;
       } else if (data.canDownload) {
         statusBox.innerHTML = `
           <p>Estado: <strong>${STATUS_LABELS[order.status] || order.status}</strong>. Ya podés descargar las originales, en máxima calidad y sin marca de agua.</p>
           ${pinLine}
+          ${pinHelp}
         `;
       } else {
         statusBox.innerHTML = `
           <p>Estado: <strong>${STATUS_LABELS[order.status] || order.status}</strong>. Cuando el fotógrafo marque el pedido como pagado, acá van a aparecer las descargas.</p>
           ${pinLine}
-          <p class="meta">Guardá este link o el PIN para volver a entrar.</p>
+          ${pinHelp}
         `;
       }
 

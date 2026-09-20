@@ -50,6 +50,7 @@ function buildClientOrderWhatsAppUrl({ order, galleryName, photoNames, clientNam
     `Email: ${clientEmail}`,
     clientPhone ? `WhatsApp: ${clientPhone}` : null,
     downloadUrl ? `\nSeguí tu pedido y descargá cuando esté listo:\n${downloadUrl}` : null,
+    `\nSi no tenés el link, entrá a Mi pedido con el #${order.id} y el PIN:\n${orderPinPageUrl()}`,
   ].filter(Boolean).join('\n');
 
   return whatsappHref(text);
@@ -60,19 +61,25 @@ function orderAccessUrl(order) {
   return `${window.location.origin}/pedido.html?c=${encodeURIComponent(order.download_token)}`;
 }
 
+function orderPinPageUrl() {
+  return `${window.location.origin}/pedido.html`;
+}
+
 function buildPhotographerReplyWhatsAppUrl(order, galleryName, extras = {}) {
   const number = toWhatsAppNumber(order.client_phone);
   if (!number) return null;
   const downloadUrl = extras.downloadUrl || orderAccessUrl(order);
+  const pinPage = extras.pinPageUrl || orderPinPageUrl();
   const ready = downloadUrl && (order.status === 'paid' || order.status === 'shipped');
   const text = ready
     ? [
       `Hola ${order.client_name}! Tu pedido #${order.id} de ${galleryName} ya está listo para descargar.`,
       '',
-      `Link: ${downloadUrl}`,
+      `Link directo: ${downloadUrl}`,
       order.access_pin ? `PIN: ${order.access_pin}` : null,
       '',
-      `Si el link no abre, entrá a la página del pedido, poné el número #${order.id} y el PIN.`,
+      `Si el link no abre, entrá a Mi pedido, poné el número #${order.id} y el PIN:`,
+      pinPage,
     ].filter(Boolean).join('\n')
     : `Hola ${order.client_name}! Te escribo por tu pedido #${order.id} de ${galleryName} (${order.photo_count} foto${order.photo_count === 1 ? '' : 's'}).`;
   return whatsappHref(text, number);
@@ -84,6 +91,7 @@ window.openWhatsApp = openWhatsApp;
 window.buildClientOrderWhatsAppUrl = buildClientOrderWhatsAppUrl;
 window.buildPhotographerReplyWhatsAppUrl = buildPhotographerReplyWhatsAppUrl;
 window.orderAccessUrl = orderAccessUrl;
+window.orderPinPageUrl = orderPinPageUrl;
 
 function injectWhatsAppButton() {
   if (WHATSAPP_ADMIN_PAGES.includes(window.location.pathname)) return;
