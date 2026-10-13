@@ -26,6 +26,19 @@
     </div>
     <p class="subtitle" style="margin-top:-12px; margin-bottom:18px;">Lista central de todos los pedidos. En cada galería solo se ve la cantidad.</p>
 
+    <details class="settings-fold" open>
+      <summary>WhatsApp del estudio</summary>
+      <p class="subtitle" style="margin-top:0;">Acá se cambia el número que recibe los pedidos y el botón verde de la web.</p>
+      <form id="whatsapp-form">
+        <div class="field">
+          <label for="whatsapp-number">Número de WhatsApp</label>
+          <input type="tel" id="whatsapp-number" required placeholder="Ej: 11 2404 3503" autocomplete="tel" />
+        </div>
+        <button type="submit" class="secondary" id="whatsapp-save" style="margin-top:12px;">Guardar WhatsApp</button>
+      </form>
+      <div id="whatsapp-message" class="message"></div>
+    </details>
+
     <details class="settings-fold">
       <summary>Limpieza automática</summary>
       <p class="subtitle" style="margin-top:0;">Solo se borran pedidos <strong>cancelados</strong> después de X días. Pendiente, pagado y enviado no se tocan. También podés borrar uno con el tachito.</p>
@@ -56,7 +69,7 @@
     <div id="orders-box" class="empty-state">Cargando...</div>
   </main>
 
-  <script src="assets/js/api.js?v=20260920-pin"></script>
+  <script src="assets/js/api.js?v=20261013-wa"></script>
   <script>
     const session = getSession();
     if (!session) window.location.href = 'login.html';
@@ -223,6 +236,7 @@
         if (settings && document.getElementById('auto-delete-days')) {
           document.getElementById('auto-delete-days').value = String(settings.cancelAutoDeleteDays || 0);
         }
+        document.getElementById('whatsapp-number').value = formatWhatsAppDisplay(user.whatsapp_number) || formatWhatsAppDisplay(DEFAULT_WHATSAPP_NUMBER);
         renderStats(pageSlug ? orders.filter((o) => o.gallery_slug === pageSlug) : orders);
         renderOrders();
       } catch (err) {
@@ -268,6 +282,26 @@
         alert(err.message);
       }
     }
+
+    document.getElementById('whatsapp-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('whatsapp-save');
+      btn.disabled = true;
+      try {
+        const { user, whatsapp } = await apiRequest('/api/auth/whatsapp', {
+          method: 'PUT',
+          token: session.token,
+          body: { whatsappNumber: document.getElementById('whatsapp-number').value.trim() },
+        });
+        document.getElementById('whatsapp-number').value = formatWhatsAppDisplay(user.whatsapp_number) || formatWhatsAppDisplay(whatsapp && whatsapp.number);
+        if (whatsapp && whatsapp.number) setStudioWhatsAppNumber(whatsapp.number);
+        showMessage(document.getElementById('whatsapp-message'), 'WhatsApp actualizado. Los pedidos ya van a este número.', 'success');
+      } catch (err) {
+        showMessage(document.getElementById('whatsapp-message'), err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
 
     document.getElementById('save-order-settings').addEventListener('click', async () => {
       const days = Number(document.getElementById('auto-delete-days').value) || 0;

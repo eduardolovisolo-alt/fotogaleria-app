@@ -26,16 +26,40 @@
       </div>
     </div>
 
+    <div class="create-panel" id="whatsapp-panel" style="display:none; margin-top:24px;">
+      <h2 style="margin-top:0;">WhatsApp del estudio</h2>
+      <p class="subtitle" style="margin-top:0;">Este número recibe los pedidos y el botón verde de la web. El del checkout es el del cliente, no este.</p>
+      <div id="whatsapp-message" class="message"></div>
+      <form id="whatsapp-form">
+        <div class="field">
+          <label for="whatsapp-number">Número de WhatsApp</label>
+          <input type="tel" id="whatsapp-number" required placeholder="Ej: 11 2404 3503" autocomplete="tel" />
+        </div>
+        <button type="submit" class="primary" id="whatsapp-save" style="margin-top:16px; width:auto; padding:11px 24px;">Guardar número</button>
+      </form>
+    </div>
+
     <a href="admin.html" class="admin-link" id="admin-link" style="display:none;">Ir al panel de galerías →</a>
     <a href="admin-orders.html" class="admin-link" id="orders-link" style="display:none;">Ver pedidos →</a>
 
     <button class="logout-btn" id="logout-btn">Cerrar sesión</button>
   </main>
 
-  <script src="assets/js/api.js"></script>
+  <script src="assets/js/api.js?v=20261013-wa"></script>
   <script>
     const session = getSession();
     if (!session) window.location.href = 'login.html';
+
+    function showWhatsAppMessage(text, type) {
+      const el = document.getElementById('whatsapp-message');
+      el.textContent = text;
+      el.className = `message show ${type}`;
+    }
+
+    function fillWhatsAppField(user) {
+      const stored = user.whatsapp_number || '';
+      document.getElementById('whatsapp-number').value = formatWhatsAppDisplay(stored) || formatWhatsAppDisplay(DEFAULT_WHATSAPP_NUMBER);
+    }
 
     async function loadProfile() {
       try {
@@ -47,6 +71,8 @@
         if (user.role === 'admin') {
           document.getElementById('admin-link').style.display = 'block';
           document.getElementById('orders-link').style.display = 'block';
+          document.getElementById('whatsapp-panel').style.display = 'block';
+          fillWhatsAppField(user);
         }
       } catch (err) {
         clearSession();
@@ -61,6 +87,26 @@
 
     document.getElementById('logout-btn').addEventListener('click', logout);
     document.getElementById('logout-link').addEventListener('click', (e) => { e.preventDefault(); logout(); });
+
+    document.getElementById('whatsapp-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('whatsapp-save');
+      btn.disabled = true;
+      try {
+        const { user, whatsapp } = await apiRequest('/api/auth/whatsapp', {
+          method: 'PUT',
+          token: session.token,
+          body: { whatsappNumber: document.getElementById('whatsapp-number').value.trim() },
+        });
+        fillWhatsAppField(user);
+        if (whatsapp && whatsapp.number) setStudioWhatsAppNumber(whatsapp.number);
+        showWhatsAppMessage('WhatsApp actualizado. Los pedidos y el botón de la web ya usan este número.', 'success');
+      } catch (err) {
+        showWhatsAppMessage(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
 
     loadProfile();
   </script>

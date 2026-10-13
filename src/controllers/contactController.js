@@ -1,6 +1,7 @@
 const contactModel = require('../models/contactModel');
 const userModel = require('../models/userModel');
 const { sendContactNotification } = require('../utils/mailer');
+const { formatWhatsAppDisplay } = require('../utils/whatsapp');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -66,4 +67,17 @@ async function markRead(req, res) {
   }
 }
 
-module.exports = { submit, list, markRead };
+async function getWhatsApp(req, res) {
+  try {
+    const number = await userModel.getStudioWhatsAppNumber();
+    res.json({
+      number,
+      display: formatWhatsAppDisplay(number),
+    });
+  } catch (err) {
+    console.error('getWhatsApp error:', err);
+    res.status(500).json({ error: 'Error al obtener el WhatsApp.' });
+  }
+}
+
+module.exports = { submit, list, markRead, getWhatsApp };

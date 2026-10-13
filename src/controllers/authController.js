@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const userModel = require('../models/userModel');
 const { signToken } = require('../utils/jwt');
 const { sendPasswordResetEmail } = require('../utils/mailer');
+const { isValidWhatsAppNumber, toWhatsAppNumber, formatWhatsAppDisplay } = require('../utils/whatsapp');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hora
@@ -136,4 +137,25 @@ async function resetPassword(req, res) {
   }
 }
 
-module.exports = { register, login, me, forgotPassword, resetPassword };
+async function updateWhatsApp(req, res) {
+  try {
+    const raw = req.body && req.body.whatsappNumber;
+    if (!isValidWhatsAppNumber(raw)) {
+      return res.status(400).json({ error: 'Ingresá un WhatsApp válido, con código de área. Ej: 11 2404 3503' });
+    }
+
+    const user = await userModel.updateWhatsAppNumber(req.user.sub, toWhatsAppNumber(raw));
+    res.json({
+      user,
+      whatsapp: {
+        number: user.whatsapp_number,
+        display: formatWhatsAppDisplay(user.whatsapp_number),
+      },
+    });
+  } catch (err) {
+    console.error('updateWhatsApp error:', err);
+    res.status(500).json({ error: 'Error al guardar el WhatsApp.' });
+  }
+}
+
+module.exports = { register, login, me, forgotPassword, resetPassword, updateWhatsApp };

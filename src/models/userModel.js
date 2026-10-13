@@ -8,7 +8,7 @@ async function findByEmail(email) {
 async function findById(id) {
   try {
     const [rows] = await pool.query(
-      'SELECT id, name, email, role, order_auto_delete_days, created_at FROM users WHERE id = ? LIMIT 1',
+      'SELECT id, name, email, role, order_auto_delete_days, whatsapp_number, created_at FROM users WHERE id = ? LIMIT 1',
       [id]
     );
     return rows[0] || null;
@@ -28,10 +28,18 @@ async function anyAdminExists() {
 }
 
 async function findAdmins() {
-  const [rows] = await pool.query(
-    "SELECT id, name, email, role FROM users WHERE role = 'admin' ORDER BY id ASC"
-  );
-  return rows;
+  try {
+    const [rows] = await pool.query(
+      "SELECT id, name, email, role, whatsapp_number FROM users WHERE role = 'admin' ORDER BY id ASC"
+    );
+    return rows;
+  } catch (err) {
+    if (err.code !== 'ER_BAD_FIELD_ERROR') throw err;
+    const [rows] = await pool.query(
+      "SELECT id, name, email, role FROM users WHERE role = 'admin' ORDER BY id ASC"
+    );
+    return rows;
+  }
 }
 
 async function create({ name, email, passwordHash, role = 'client' }) {
@@ -70,6 +78,27 @@ async function updateOrderAutoDeleteDays(userId, days) {
   return findById(userId);
 }
 
+async function updateWhatsAppNumber(userId, number) {
+  await pool.query('UPDATE users SET whatsapp_number = ? WHERE id = ?', [number || null, userId]);
+  return findById(userId);
+}
+
+async function getStudioWhatsAppNumber() {
+  const { DEFAULT_WHATSAPP_NUMBER, toWhatsAppNumber } = require('../utils/whatsapp');
+  try {
+    const [rows] = await pool.query(
+      `SELECT whatsapp_number FROM users
+       WHERE role = 'admin' AND whatsapp_number IS NOT NULL AND whatsapp_number <> ''
+       ORDER BY id ASC
+       LIMIT 1`
+    );
+    return toWhatsAppNumber(rows[0]?.whatsapp_number) || DEFAULT_WHATSAPP_NUMBER;
+  } catch (err) {
+    if (err.code !== 'ER_BAD_FIELD_ERROR') throw err;
+    return DEFAULT_WHATSAPP_NUMBER;
+  }
+}
+
 module.exports = {
   findByEmail,
   findById,
@@ -80,4 +109,6 @@ module.exports = {
   findByValidResetToken,
   resetPassword,
   updateOrderAutoDeleteDays,
+  updateWhatsAppNumber,
+  getStudioWhatsAppNumber,
 };

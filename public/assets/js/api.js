@@ -1,6 +1,8 @@
 const API_BASE_URL = window.location.origin;
 
-const WHATSAPP_NUMBER = '5491130108299';
+const DEFAULT_WHATSAPP_NUMBER = '5491124043503';
+let WHATSAPP_NUMBER = DEFAULT_WHATSAPP_NUMBER;
+let whatsappNumberPromise = null;
 const WHATSAPP_ADMIN_PAGES = ['/dashboard.html', '/admin.html', '/admin-gallery.html', '/admin-messages.html', '/admin-orders.html', '/admin-watermark.html', '/checkout.html', '/pedido.html'];
 
 function toWhatsAppNumber(phone) {
@@ -10,7 +12,42 @@ function toWhatsAppNumber(phone) {
   if (digits.startsWith('54')) return digits;
   if (digits.startsWith('0')) digits = digits.slice(1);
   if (digits.length === 10) return `549${digits}`;
-  return `54${digits}`;
+  if (digits.length >= 8 && digits.length <= 13) return `54${digits}`;
+  return null;
+}
+
+function formatWhatsAppDisplay(phone) {
+  const normalized = toWhatsAppNumber(phone);
+  if (!normalized) return '';
+  if (normalized.startsWith('549') && normalized.length === 13) {
+    const local = normalized.slice(3);
+    return `${local.slice(0, 2)} ${local.slice(2, 6)} ${local.slice(6)}`;
+  }
+  if (normalized.startsWith('54')) return `+${normalized}`;
+  return normalized;
+}
+
+async function loadWhatsAppNumber() {
+  if (!whatsappNumberPromise) {
+    whatsappNumberPromise = fetch(`${API_BASE_URL}/api/contact/whatsapp`)
+      .then((res) => res.json().catch(() => ({})))
+      .then((data) => {
+        const next = toWhatsAppNumber(data.number);
+        if (next) WHATSAPP_NUMBER = next;
+        return WHATSAPP_NUMBER;
+      })
+      .catch(() => WHATSAPP_NUMBER);
+  }
+  return whatsappNumberPromise;
+}
+
+function setStudioWhatsAppNumber(phone) {
+  const next = toWhatsAppNumber(phone);
+  if (next) {
+    WHATSAPP_NUMBER = next;
+    whatsappNumberPromise = Promise.resolve(next);
+  }
+  return WHATSAPP_NUMBER;
 }
 
 function whatsappHref(text, number = WHATSAPP_NUMBER) {
@@ -85,7 +122,11 @@ function buildPhotographerReplyWhatsAppUrl(order, galleryName, extras = {}) {
   return whatsappHref(text, number);
 }
 
+window.DEFAULT_WHATSAPP_NUMBER = DEFAULT_WHATSAPP_NUMBER;
 window.toWhatsAppNumber = toWhatsAppNumber;
+window.formatWhatsAppDisplay = formatWhatsAppDisplay;
+window.loadWhatsAppNumber = loadWhatsAppNumber;
+window.setStudioWhatsAppNumber = setStudioWhatsAppNumber;
 window.whatsappHref = whatsappHref;
 window.openWhatsApp = openWhatsApp;
 window.buildClientOrderWhatsAppUrl = buildClientOrderWhatsAppUrl;
@@ -110,7 +151,10 @@ function injectWhatsAppButton() {
   document.body.appendChild(link);
 }
 
-document.addEventListener('DOMContentLoaded', injectWhatsAppButton);
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadWhatsAppNumber();
+  injectWhatsAppButton();
+});
 
 // Protección liviana contra descarga casual de fotos: bloquea clic derecho,
 // mantener presionado (long-press) y arrastrar sobre imágenes marcadas como

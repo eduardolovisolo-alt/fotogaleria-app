@@ -42,6 +42,7 @@ async function ensureSchema() {
   await addColumn('ALTER TABLE galleries ADD COLUMN apply_watermark TINYINT(1) NOT NULL DEFAULT 1');
   await addColumn('ALTER TABLE galleries ADD COLUMN discount_tiers TEXT NULL');
   await addColumn('ALTER TABLE users ADD COLUMN order_auto_delete_days INT NULL');
+  await addColumn('ALTER TABLE users ADD COLUMN whatsapp_number VARCHAR(20) NULL');
   await addColumn('ALTER TABLE orders ADD COLUMN discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0');
   await addColumn('ALTER TABLE orders ADD COLUMN download_token VARCHAR(64) NULL');
   await addColumn('ALTER TABLE orders ADD COLUMN access_pin VARCHAR(6) NULL');
