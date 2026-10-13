@@ -53,7 +53,7 @@
         </div>
         <div class="field" style="margin-top:14px;">
           <label for="client-phone">WhatsApp (recomendado)</label>
-          <input type="tel" id="client-phone" placeholder="Ej: 11 3010 8299" autocomplete="tel" />
+          <input type="tel" id="client-phone" placeholder="Ej: 11 1234 5678" autocomplete="tel" />
         </div>
         <button type="submit" class="primary" id="confirm-btn" style="margin-top:20px;">Confirmar y enviar por WhatsApp</button>
       </form>
@@ -79,7 +79,7 @@
     </div>
   </main>
 
-  <script src="assets/js/api.js?v=20260920-pin"></script>
+  <script src="assets/js/api.js?v=20261013-wa"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const slug = params.get('slug');
@@ -162,7 +162,8 @@
       document.getElementById('total-amount').textContent = `$${quote.total.toLocaleString('es-AR')}`;
     }
 
-    function openOrderWhatsApp(order, photoNames, name, email, phone, downloadUrl) {
+    async function openOrderWhatsApp(order, photoNames, name, email, phone, downloadUrl) {
+      await loadWhatsAppNumber();
       const url = buildClientOrderWhatsAppUrl({
         order,
         galleryName: galleryName || order.gallery_name,

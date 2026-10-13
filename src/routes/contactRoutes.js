@@ -5,6 +5,7 @@ const { protect, requireRole } = require('../middleware/authMiddleware');
 const router = express.Router();
 
 router.post('/', contactController.submit);
+router.get('/whatsapp', contactController.getWhatsApp);
 router.get('/', protect, requireRole('admin'), contactController.list);
 router.put('/:id/read', protect, requireRole('admin'), contactController.markRead);
 

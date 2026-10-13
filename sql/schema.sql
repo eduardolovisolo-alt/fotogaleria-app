@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   reset_token VARCHAR(255) NULL,
   reset_token_expires DATETIME NULL,
   order_auto_delete_days INT NULL,
+  whatsapp_number VARCHAR(20) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
