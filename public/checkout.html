@@ -79,7 +79,8 @@
     </div>
   </main>
 
-  <script src="assets/js/api.js?v=20261013-wa"></script>
+  <script src="assets/js/whatsapp-studio.js?v=20261014-wa2"></script>
+  <script src="assets/js/api.js?v=20261014-wa2"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const slug = params.get('slug');
@@ -163,17 +164,33 @@
     }
 
     async function openOrderWhatsApp(order, photoNames, name, email, phone, downloadUrl) {
-      await loadWhatsAppNumber();
-      const url = buildClientOrderWhatsAppUrl({
-        order,
-        galleryName: galleryName || order.gallery_name,
-        photoNames,
-        clientName: name,
-        clientEmail: email,
-        clientPhone: phone,
-        downloadUrl,
-      });
-      openWhatsApp(url, document.getElementById('whatsapp-order-link'));
+      const studio = window.STUDIO_WHATSAPP_NUMBER || '5491124043503';
+      if (typeof setStudioWhatsAppNumber === 'function') setStudioWhatsAppNumber(studio);
+      if (typeof loadWhatsAppNumber === 'function') await loadWhatsAppNumber();
+      if (typeof setStudioWhatsAppNumber === 'function') setStudioWhatsAppNumber(studio);
+      let url = typeof buildClientOrderWhatsAppUrl === 'function'
+        ? buildClientOrderWhatsAppUrl({
+          order,
+          galleryName: galleryName || order.gallery_name,
+          photoNames,
+          clientName: name,
+          clientEmail: email,
+          clientPhone: phone,
+          downloadUrl,
+        })
+        : '';
+      if (!url || url.indexOf('wa.me') === -1) {
+        const text = `Hola! Quiero confirmar este pedido:\n\nPedido #${order.id}\nGalería: ${galleryName || order.gallery_name || ''}`;
+        url = `https://wa.me/${studio}?text=${encodeURIComponent(text)}`;
+      }
+      url = url.replace(/https:\/\/wa\.me\/\d+/, `https://wa.me/${studio}`);
+      const link = document.getElementById('whatsapp-order-link');
+      if (typeof openWhatsApp === 'function') {
+        openWhatsApp(url, link);
+      } else {
+        if (link) link.href = url;
+        window.open(url, '_blank');
+      }
     }
 
     document.getElementById('checkout-form').addEventListener('submit', async (e) => {

@@ -1,6 +1,6 @@
 const API_BASE_URL = window.location.origin;
 
-const DEFAULT_WHATSAPP_NUMBER = '5491124043503';
+const DEFAULT_WHATSAPP_NUMBER = window.STUDIO_WHATSAPP_NUMBER || '5491124043503';
 let WHATSAPP_NUMBER = DEFAULT_WHATSAPP_NUMBER;
 let whatsappNumberPromise = null;
 const WHATSAPP_ADMIN_PAGES = ['/dashboard.html', '/admin.html', '/admin-gallery.html', '/admin-messages.html', '/admin-orders.html', '/admin-watermark.html', '/checkout.html', '/pedido.html'];
@@ -30,7 +30,10 @@ function formatWhatsAppDisplay(phone) {
 async function loadWhatsAppNumber() {
   if (!whatsappNumberPromise) {
     whatsappNumberPromise = fetch(`${API_BASE_URL}/api/contact/whatsapp`)
-      .then((res) => res.json().catch(() => ({})))
+      .then(async (res) => {
+        if (!res.ok) return {};
+        return res.json().catch(() => ({}));
+      })
       .then((data) => {
         const next = toWhatsAppNumber(data.number);
         if (next) WHATSAPP_NUMBER = next;
@@ -90,7 +93,7 @@ function buildClientOrderWhatsAppUrl({ order, galleryName, photoNames, clientNam
     `\nSi no tenés el link, entrá a Mi pedido con el #${order.id} y el PIN:\n${orderPinPageUrl()}`,
   ].filter(Boolean).join('\n');
 
-  return whatsappHref(text);
+  return whatsappHref(text, WHATSAPP_NUMBER || DEFAULT_WHATSAPP_NUMBER);
 }
 
 function orderAccessUrl(order) {
@@ -149,6 +152,7 @@ function injectWhatsAppButton() {
     </svg>
   `;
   document.body.appendChild(link);
+  if (typeof patchStudioWhatsAppLinks === 'function') patchStudioWhatsAppLinks();
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
