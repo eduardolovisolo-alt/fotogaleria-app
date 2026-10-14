@@ -2,6 +2,7 @@ const contactModel = require('../models/contactModel');
 const userModel = require('../models/userModel');
 const { sendContactNotification } = require('../utils/mailer');
 const { formatWhatsAppDisplay } = require('../utils/whatsapp');
+const { isPublicPhotographer } = require('../middleware/staffMiddleware');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -69,7 +70,25 @@ async function markRead(req, res) {
 
 async function getWhatsApp(req, res) {
   try {
-    const number = await userModel.getStudioWhatsAppNumber();
+    const galleryModel = require('../models/galleryModel');
+    const slug = String(req.query.slug || '').trim();
+    const photographerSlug = String(req.query.photographer || '').trim();
+    let number = await userModel.getStudioWhatsAppNumber();
+
+    if (photographerSlug) {
+      const photographer = await userModel.findByPublicSlug(photographerSlug);
+      if (isPublicPhotographer(photographer)) {
+        number = await userModel.getWhatsAppForUser(photographer) || number;
+      }
+    } else if (slug) {
+      const gallery = await galleryModel.findBySlug(slug);
+      if (gallery) {
+        const owner = await userModel.findById(gallery.admin_id);
+        const ownerNumber = await userModel.getWhatsAppForUser(owner);
+        if (ownerNumber) number = ownerNumber;
+      }
+    }
+
     res.json({
       number,
       display: formatWhatsAppDisplay(number),

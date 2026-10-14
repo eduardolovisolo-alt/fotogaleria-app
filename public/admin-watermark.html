@@ -13,9 +13,10 @@
     </a>
     <nav>
       <a href="admin.html">Galerías</a>
+      <a href="admin-photographers.html" id="photographers-nav" style="display:none;">Fotógrafos</a>
       <a href="admin-watermark.html">Marca de agua</a>
       <a href="admin-orders.html">Pedidos</a>
-      <a href="admin-messages.html">Mensajes</a>
+      <a href="admin-messages.html" id="messages-nav">Mensajes</a>
       <a href="dashboard.html">Mi cuenta</a>
       <a href="#" id="logout-link">Cerrar sesión</a>
     </nav>
@@ -81,7 +82,7 @@
   </main>
 
   <script src="assets/js/whatsapp-studio.js?v=20261014-wa2"></script>
-  <script src="assets/js/api.js?v=20261014-wa2"></script>
+  <script src="assets/js/api.js?v=20261014-fotos2"></script>
   <script src="assets/js/watermark-admin.js?v=20260919-ux2"></script>
   <script>
     const session = getSession();
@@ -101,7 +102,11 @@
     (async () => {
       try {
         const { user } = await apiRequest('/api/auth/me', { token: session.token });
-        if (user.role !== 'admin') window.location.href = 'dashboard.html';
+        if (!canManagePanel(user)) {
+          window.location.href = 'dashboard.html';
+          return;
+        }
+        applyStaffNav(user);
       } catch {
         clearSession();
         window.location.href = 'login.html';

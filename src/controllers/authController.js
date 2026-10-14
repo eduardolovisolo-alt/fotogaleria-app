@@ -4,6 +4,8 @@ const userModel = require('../models/userModel');
 const { signToken } = require('../utils/jwt');
 const { sendPasswordResetEmail } = require('../utils/mailer');
 const { isValidWhatsAppNumber, toWhatsAppNumber, formatWhatsAppDisplay } = require('../utils/whatsapp');
+const { uniquePhotographerSlug } = require('../utils/slug');
+const { panelPath } = require('../middleware/staffMiddleware');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hora
@@ -14,7 +16,7 @@ function hashToken(token) {
 
 async function register(req, res) {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, asPhotographer, whatsappNumber } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Nombre, email y contraseña son obligatorios.' });
@@ -32,11 +34,42 @@ async function register(req, res) {
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const role = (await userModel.anyAdminExists()) ? 'client' : 'admin';
-    const user = await userModel.create({ name, email, passwordHash, role });
+    const adminExists = await userModel.anyAdminExists();
+    if (adminExists && !asPhotographer) {
+      return res.status(400).json({
+        error: 'El registro es solo para fotógrafos. Los clientes piden las fotos sin cuenta.',
+      });
+    }
 
-    const token = signToken({ sub: user.id, role: user.role });
-    res.status(201).json({ user, token });
+    let role = 'admin';
+    let photographerStatus = null;
+    let publicSlug = null;
+    let whatsapp = null;
+
+    if (asPhotographer) {
+      if (!isValidWhatsAppNumber(whatsappNumber)) {
+        return res.status(400).json({ error: 'El WhatsApp es obligatorio para registrarte como fotógrafo.' });
+      }
+      whatsapp = toWhatsAppNumber(whatsappNumber);
+      publicSlug = await uniquePhotographerSlug(name);
+      if (adminExists) {
+        role = 'photographer';
+        photographerStatus = 'pending';
+      }
+    }
+
+    const user = await userModel.create({
+      name,
+      email,
+      passwordHash,
+      role,
+      photographerStatus,
+      publicSlug,
+      whatsappNumber: whatsapp,
+    });
+
+    const token = signToken({ sub: user.id, role: user.role, photographerStatus: user.photographer_status });
+    res.status(201).json({ user, token, panel: panelPath(user) });
   } catch (err) {
     console.error('register error:', err);
     res.status(500).json({ error: 'Error interno al registrar el usuario.' });
@@ -61,9 +94,13 @@ async function login(req, res) {
       return res.status(401).json({ error: 'Credenciales inválidas.' });
     }
 
-    const token = signToken({ sub: user.id, role: user.role });
     const safeUser = await userModel.findById(user.id);
-    res.json({ user: safeUser, token });
+    const token = signToken({
+      sub: safeUser.id,
+      role: safeUser.role,
+      photographerStatus: safeUser.photographer_status,
+    });
+    res.json({ user: safeUser, token, panel: panelPath(safeUser) });
   } catch (err) {
     console.error('login error:', err);
     res.status(500).json({ error: 'Error interno al iniciar sesión.' });
@@ -139,6 +176,10 @@ async function resetPassword(req, res) {
 
 async function updateWhatsApp(req, res) {
   try {
+    const account = await userModel.findById(req.user.sub);
+    if (!account || (account.role !== 'admin' && account.role !== 'photographer')) {
+      return res.status(403).json({ error: 'No tenés permisos para esta acción.' });
+    }
     const raw = req.body && req.body.whatsappNumber;
     if (!isValidWhatsAppNumber(raw)) {
       return res.status(400).json({ error: 'Ingresá un WhatsApp válido, con código de área. Ej: 11 2404 3503' });

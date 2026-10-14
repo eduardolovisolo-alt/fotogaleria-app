@@ -3,7 +3,7 @@ const API_BASE_URL = window.location.origin;
 const DEFAULT_WHATSAPP_NUMBER = window.STUDIO_WHATSAPP_NUMBER || '5491124043503';
 let WHATSAPP_NUMBER = DEFAULT_WHATSAPP_NUMBER;
 let whatsappNumberPromise = null;
-const WHATSAPP_ADMIN_PAGES = ['/dashboard.html', '/admin.html', '/admin-gallery.html', '/admin-messages.html', '/admin-orders.html', '/admin-watermark.html', '/checkout.html', '/pedido.html'];
+const WHATSAPP_ADMIN_PAGES = ['/dashboard.html', '/admin.html', '/admin-gallery.html', '/admin-messages.html', '/admin-orders.html', '/admin-watermark.html', '/admin-photographers.html', '/checkout.html', '/pedido.html'];
 
 function toWhatsAppNumber(phone) {
   let digits = String(phone || '').replace(/\D/g, '');
@@ -27,9 +27,34 @@ function formatWhatsAppDisplay(phone) {
   return normalized;
 }
 
+function canManagePanel(user) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  return user.role === 'photographer' && user.photographer_status === 'approved';
+}
+
+function panelPath(user) {
+  return canManagePanel(user) ? 'admin.html' : 'dashboard.html';
+}
+
+function applyStaffNav(user) {
+  const photoNav = document.getElementById('photographers-nav');
+  const messagesNav = document.getElementById('messages-nav');
+  if (user && user.role === 'admin') {
+    if (photoNav) photoNav.style.display = '';
+  } else if (messagesNav) {
+    messagesNav.style.display = 'none';
+  }
+}
+
 async function loadWhatsAppNumber() {
   if (!whatsappNumberPromise) {
-    whatsappNumberPromise = fetch(`${API_BASE_URL}/api/contact/whatsapp`)
+    const params = new URLSearchParams(window.location.search);
+    const query = new URLSearchParams();
+    if (params.get('slug')) query.set('slug', params.get('slug'));
+    if (params.get('u')) query.set('photographer', params.get('u'));
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    whatsappNumberPromise = fetch(`${API_BASE_URL}/api/contact/whatsapp${suffix}`)
       .then(async (res) => {
         if (!res.ok) return {};
         return res.json().catch(() => ({}));
@@ -125,6 +150,9 @@ function buildPhotographerReplyWhatsAppUrl(order, galleryName, extras = {}) {
   return whatsappHref(text, number);
 }
 
+window.canManagePanel = canManagePanel;
+window.panelPath = panelPath;
+window.applyStaffNav = applyStaffNav;
 window.DEFAULT_WHATSAPP_NUMBER = DEFAULT_WHATSAPP_NUMBER;
 window.toWhatsAppNumber = toWhatsAppNumber;
 window.formatWhatsAppDisplay = formatWhatsAppDisplay;

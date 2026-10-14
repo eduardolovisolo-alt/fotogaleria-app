@@ -1,4 +1,5 @@
 const galleryModel = require('../models/galleryModel');
+const userModel = require('../models/userModel');
 
 function slugify(text) {
   return text
@@ -24,4 +25,15 @@ async function uniqueSlug(name) {
   return candidate;
 }
 
-module.exports = { slugify, uniqueSlug };
+async function uniquePhotographerSlug(name) {
+  const base = slugify(name) || 'fotografo';
+  let candidate = base;
+  let suffix = 1;
+  while (await userModel.publicSlugExists(candidate)) {
+    suffix += 1;
+    candidate = `${base}-${suffix}`;
+  }
+  return candidate;
+}
+
+module.exports = { slugify, uniqueSlug, uniquePhotographerSlug };

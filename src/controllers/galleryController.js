@@ -10,6 +10,10 @@ const { normalizeDiscountTiers, parseDiscountTiers } = require('../utils/pricing
 const { r2, BUCKET_NAME } = require('../config/r2');
 const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { withSignedUrls } = require('./photoController');
+const userModel = require('../models/userModel');
+const { catalogItem } = require('./photographerController');
+const { formatWhatsAppDisplay } = require('../utils/whatsapp');
+const { isPublicPhotographer } = require('../middleware/staffMiddleware');
 
 async function createGallery(req, res) {
   try {
@@ -39,7 +43,7 @@ async function createGallery(req, res) {
       passwordHash,
       accessUsername: !isPublic ? String(accessUsername).trim() : null,
       pricePerPhoto: pricePerPhoto ? Number(pricePerPhoto) : null,
-      author: author ? String(author).trim().slice(0, 150) : null,
+      author: author ? String(author).trim().slice(0, 150) : (req.account && req.account.name) || null,
       applyWatermark: applyWatermark !== false,
       discountTiers: normalizeDiscountTiers(discountTiers),
     });
@@ -79,32 +83,11 @@ async function findCoverPhoto(gallery) {
 
 async function listCatalog(req, res) {
   try {
-    const galleries = await galleryModel.findAll();
-    const items = await Promise.all(galleries.map(async (gallery) => {
-      const photos = await photoModel.findByGallery(gallery.id);
-      let cover = null;
-      if (gallery.cover_photo_id) {
-        cover = photos.find((photo) => Number(photo.id) === Number(gallery.cover_photo_id)) || null;
-      }
-      if (!cover) cover = photos[0] || null;
-      let coverUrl = null;
-      if (cover) {
-        try {
-          const signed = await withSignedUrls(cover, false);
-          coverUrl = signed.thumbnailUrl;
-        } catch (err) {
-          console.error('catalog cover error:', err);
-        }
-      }
-      return {
-        name: gallery.name,
-        slug: gallery.slug,
-        isPublic: !!gallery.is_public,
-        author: gallery.author || '',
-        coverUrl,
-        photoCount: photos.length,
-      };
-    }));
+    const galleries = await galleryModel.findFeatured();
+    const items = await Promise.all(galleries.map((gallery) => catalogItem(gallery, {
+      author: gallery.photographer_name || gallery.author || '',
+      photographerSlug: gallery.photographer_slug || '',
+    })));
     res.json({ galleries: items });
   } catch (err) {
     console.error('listCatalog error:', err);
@@ -115,6 +98,9 @@ async function listCatalog(req, res) {
 async function getGalleryInfo(req, res) {
   const gallery = req.gallery;
   const locked = !gallery.is_public && !req.hasGalleryAccess;
+  const owner = await userModel.findById(gallery.admin_id);
+  const ownerApproved = isPublicPhotographer(owner);
+  const whatsappNumber = ownerApproved ? await userModel.getWhatsAppForUser(owner) : null;
   res.json({
     gallery: {
       id: gallery.id,
@@ -122,9 +108,15 @@ async function getGalleryInfo(req, res) {
       slug: gallery.slug,
       isPublic: !!gallery.is_public,
       locked,
-      author: gallery.author || '',
+      author: gallery.author || owner?.name || '',
       pricePerPhoto: gallery.price_per_photo,
       discountTiers: parseDiscountTiers(gallery.discount_tiers),
+      photographer: ownerApproved ? {
+        name: owner.name,
+        slug: owner.public_slug || '',
+        whatsappNumber,
+        whatsappDisplay: formatWhatsAppDisplay(whatsappNumber),
+      } : null,
     },
   });
 }
@@ -275,6 +267,7 @@ function toSafeGallery(gallery) {
     pricePerPhoto: gallery.price_per_photo,
     author: gallery.author || '',
     applyWatermark: gallery.apply_watermark !== 0,
+    featured: !!gallery.featured,
     discountTiers: parseDiscountTiers(gallery.discount_tiers),
     createdAt: gallery.created_at,
   };

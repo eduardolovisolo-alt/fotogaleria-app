@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Punto Directo Media</title>
-<link rel="stylesheet" href="assets/css/style.css?v=20260920-logo" />
+<link rel="stylesheet" href="assets/css/style.css?v=20261014-fotos2" />
 </head>
 <body>
   <header class="topbar">
@@ -22,12 +22,19 @@
   <main>
     <section class="catalog-page">
       <div class="catalog-intro">
-        <p class="hero-kicker">Galerías</p>
+        <p class="hero-kicker">Destacadas</p>
         <h1>Elegí una sesión para ver las fotos</h1>
-        <p>Si la galería es privada, usá el usuario y la contraseña que te compartió el fotógrafo.</p>
+        <p>Si la galería es privada, usá el usuario y la contraseña que te compartió el fotógrafo. El resto de las sesiones está en el perfil de cada fotógrafo.</p>
       </div>
       <div id="catalog"></div>
-      <p class="empty-state" id="empty-state" style="display:none;">Todavía no hay galerías.</p>
+      <p class="empty-state" id="empty-state" style="display:none;">Todavía no hay galerías destacadas.</p>
+    </section>
+
+    <section class="home-section" id="fotografos">
+      <h2>Fotógrafos</h2>
+      <p class="subtitle" style="margin-top:-8px;">Entrá al perfil de cada uno para ver todas sus galerías.</p>
+      <div id="photographers" class="photographer-grid"></div>
+      <p class="empty-state" id="photographers-empty" style="display:none;">Todavía no hay fotógrafos publicados.</p>
     </section>
 
     <section class="home-section" id="como-funciona">
@@ -60,7 +67,7 @@
             <li>Marca de agua, portada y pedidos en un panel</li>
             <li>Los clientes te escriben por WhatsApp</li>
           </ul>
-          <a class="cta-secondary" href="login.html" id="split-login">Ir al panel</a>
+          <a class="cta-secondary" href="register.html" id="split-login">Quiero sumarme</a>
         </article>
         <article class="split-card">
           <h2>Si te compartieron un link</h2>
@@ -101,11 +108,11 @@
   </div>
 
   <script src="assets/js/whatsapp-studio.js?v=20261014-wa2"></script>
-  <script src="assets/js/api.js?v=20261014-wa2"></script>
+  <script src="assets/js/api.js?v=20261014-fotos2"></script>
   <script>
     const session = getSession();
     if (session) {
-      const dest = session.user?.role === 'admin' ? 'admin.html' : 'dashboard.html';
+      const dest = panelPath(session.user);
       document.getElementById('login-nav').textContent = 'Ir al panel';
       document.getElementById('login-nav').href = dest;
       document.getElementById('split-login').textContent = 'Ir a mi panel';
@@ -155,12 +162,13 @@
       const byAuthor = new Map();
       galleries.forEach((gallery) => {
         const author = String(gallery.author || '').trim() || 'Sin autor';
-        if (!byAuthor.has(author)) {
+        const key = gallery.photographerSlug || author;
+        if (!byAuthor.has(key)) {
           const list = [];
-          byAuthor.set(author, list);
-          groups.push({ author, galleries: list });
+          byAuthor.set(key, list);
+          groups.push({ author, slug: gallery.photographerSlug || '', galleries: list });
         }
-        byAuthor.get(author).push(gallery);
+        byAuthor.get(key).push(gallery);
       });
       return groups;
     }
@@ -185,7 +193,9 @@
       emptyState.style.display = galleries.length ? 'none' : 'block';
       catalog.innerHTML = groupByAuthor(galleries).map((group) => `
         <section class="catalog-author-block">
-          <h2 class="catalog-author-heading">${escapeHtml(group.author)}</h2>
+          <h2 class="catalog-author-heading">${group.slug
+            ? `<a href="fotografo.html?u=${encodeURIComponent(group.slug)}">${escapeHtml(group.author)}</a>`
+            : escapeHtml(group.author)}</h2>
           <div class="catalog-grid">
             ${group.galleries.map(galleryCard).join('')}
           </div>
@@ -231,6 +241,20 @@
       }
     });
 
+    function photographerCard(p) {
+      return `
+        <a class="photographer-card" href="fotografo.html?u=${encodeURIComponent(p.slug)}">
+          ${p.coverUrl
+            ? `<img src="${escapeHtml(p.coverUrl)}" alt="${escapeHtml(p.name)}" loading="lazy" />`
+            : `<div class="catalog-card-empty">Fotos</div>`}
+          <div class="photographer-card-info">
+            <h3>${escapeHtml(p.name)}</h3>
+            <span>${p.galleryCount || 0} galería${p.galleryCount === 1 ? '' : 's'}</span>
+          </div>
+        </a>
+      `;
+    }
+
     (async () => {
       try {
         const { galleries } = await apiRequest('/api/galleries/catalog');
@@ -238,6 +262,20 @@
       } catch (err) {
         emptyState.style.display = 'block';
         emptyState.textContent = err.message || 'No se pudieron cargar las galerías.';
+      }
+      try {
+        const { photographers } = await apiRequest('/api/photographers');
+        const box = document.getElementById('photographers');
+        const empty = document.getElementById('photographers-empty');
+        if (!photographers.length) {
+          empty.style.display = 'block';
+          return;
+        }
+        empty.style.display = 'none';
+        box.innerHTML = photographers.map(photographerCard).join('');
+      } catch (err) {
+        document.getElementById('photographers-empty').style.display = 'block';
+        document.getElementById('photographers-empty').textContent = err.message || 'No se pudieron cargar los fotógrafos.';
       }
     })();
   </script>

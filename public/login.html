@@ -14,14 +14,14 @@
     <nav>
       <a href="pedido.html">Mi pedido</a>
       <a href="contact.html">Contacto</a>
-      <a href="register.html">Crear cuenta</a>
+      <a href="register.html">Soy fotógrafo</a>
     </nav>
   </header>
 
   <main class="page">
     <div class="card">
       <h1>Iniciar sesión</h1>
-      <p class="subtitle">Accedé a tu panel de galerías</p>
+      <p class="subtitle">Accedé a tu panel. Si te compartieron un link de fotos, no hace falta cuenta.</p>
 
       <div id="message" class="message"></div>
 
@@ -38,19 +38,19 @@
       </form>
 
       <p class="alt-action"><a href="forgot-password.html">¿Olvidaste tu contraseña?</a></p>
-      <p class="alt-action">¿No tenés cuenta? <a href="register.html">Registrate</a></p>
+      <p class="alt-action">¿Sos fotógrafo? <a href="register.html">Pedí acceso</a>. El cliente no necesita cuenta.</p>
     </div>
   </main>
 
   <script src="assets/js/whatsapp-studio.js?v=20261014-wa2"></script>
-  <script src="assets/js/api.js?v=20261014-wa2"></script>
+  <script src="assets/js/api.js?v=20261014-fotos2"></script>
   <script>
     const form = document.getElementById('login-form');
     const messageEl = document.getElementById('message');
     const submitBtn = document.getElementById('submit-btn');
 
     const existing = getSession();
-    if (existing) window.location.href = existing.user?.role === 'admin' ? 'admin.html' : 'dashboard.html';
+    if (existing) window.location.href = panelPath(existing.user);
 
     function showMessage(text, type) {
       messageEl.textContent = text;
@@ -67,7 +67,7 @@
         const password = document.getElementById('password').value;
         const data = await apiRequest('/api/auth/login', { method: 'POST', body: { email, password } });
         saveSession(data);
-        window.location.href = data.user?.role === 'admin' ? 'admin.html' : 'dashboard.html';
+        window.location.href = data.panel || panelPath(data.user);
       } catch (err) {
         showMessage(err.message, 'error');
         submitBtn.disabled = false;

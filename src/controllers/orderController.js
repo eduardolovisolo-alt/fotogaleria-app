@@ -108,10 +108,13 @@ async function createOrder(req, res) {
     }
 
     const downloadUrl = orderDownloadUrl(appBaseUrl(req), order.download_token);
+    const photographer = await userModel.findById(gallery.admin_id);
+    const photographerWhatsApp = photographer
+      ? await userModel.getWhatsAppForUser(photographer)
+      : null;
 
     try {
-      const photographer = await userModel.findById(gallery.admin_id);
-      const notifyEmail = process.env.ADMIN_NOTIFY_EMAIL || photographer?.email;
+      const notifyEmail = photographer?.email || process.env.ADMIN_NOTIFY_EMAIL;
 
       if (notifyEmail) {
         await sendOrderNotificationToPhotographer({
@@ -144,6 +147,7 @@ async function createOrder(req, res) {
       photos: photoNames,
       galleryName: gallery.name,
       downloadUrl,
+      photographerWhatsApp,
     });
   } catch (err) {
     console.error('createOrder error:', err);

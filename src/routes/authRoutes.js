@@ -14,7 +14,7 @@ const router = express.Router();
 router.post('/register', register);
 router.post('/login', login);
 router.get('/me', protect, me);
-router.put('/whatsapp', protect, requireRole('admin'), updateWhatsApp);
+router.put('/whatsapp', protect, updateWhatsApp);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
 
