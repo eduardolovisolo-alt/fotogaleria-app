@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Punto Directo Media — Administrar galería</title>
-<link rel="stylesheet" href="assets/css/style.css?v=20260920-logo" />
+<link rel="stylesheet" href="assets/css/style.css?v=20261014-fotos" />
 </head>
 <body>
   <header class="topbar">
@@ -106,6 +106,10 @@
     <div id="upload-message" class="message"></div>
 
     <p class="gallery-title">Fotos de esta galería</p>
+    <div class="field photo-search">
+      <label for="photo-search">Buscar foto por nombre</label>
+      <input type="search" id="photo-search" placeholder="Ej: IMG_09128" autocomplete="off" />
+    </div>
     <div class="gallery-grid" id="gallery-grid"></div>
     <p class="empty-state" id="empty-state" style="display:none;">Todavía no subiste ninguna foto.</p>
 
@@ -222,10 +226,27 @@
     const galleryGrid = document.getElementById('gallery-grid');
     const emptyState = document.getElementById('empty-state');
     const uploadMessage = document.getElementById('upload-message');
+    let allPhotos = [];
+
+    function filteredPhotos() {
+      const q = (document.getElementById('photo-search').value || '').trim().toLowerCase();
+      if (!q) return allPhotos;
+      return allPhotos.filter((photo) => String(photo.file_name || '').toLowerCase().includes(q));
+    }
 
     function renderPhotos(photos) {
       galleryGrid.innerHTML = '';
-      emptyState.style.display = photos.length ? 'none' : 'block';
+      if (!allPhotos.length) {
+        emptyState.style.display = 'block';
+        emptyState.textContent = 'Todavía no subiste ninguna foto.';
+        return;
+      }
+      if (!photos.length) {
+        emptyState.style.display = 'block';
+        emptyState.textContent = 'Ninguna foto coincide con esa búsqueda.';
+        return;
+      }
+      emptyState.style.display = 'none';
       photos.forEach((photo) => {
         const card = document.createElement('div');
         card.className = 'photo-card';
@@ -248,11 +269,16 @@
     async function loadPhotos() {
       try {
         const { photos } = await apiRequest(`${galleryApi}/photos`, { token: session.token });
-        renderPhotos(photos);
+        allPhotos = photos;
+        renderPhotos(filteredPhotos());
       } catch (err) {
         showMessage(uploadMessage, err.message, 'error');
       }
     }
+
+    document.getElementById('photo-search').addEventListener('input', () => {
+      renderPhotos(filteredPhotos());
+    });
 
     async function setCoverPhoto(photoId) {
       try {

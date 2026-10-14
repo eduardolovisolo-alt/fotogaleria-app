@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Punto Directo Media</title>
-<link rel="stylesheet" href="assets/css/style.css?v=20260920-logo" />
+<link rel="stylesheet" href="assets/css/style.css?v=20261014-fotos" />
 </head>
 <body>
   <header class="topbar">
@@ -44,6 +44,10 @@
       <p class="gallery-author" id="gallery-author" style="display:none;"></p>
       <p>Elegí tus fotos favoritas tocándolas</p>
       <div class="gallery-toolbar" id="gallery-toolbar" style="display:none;">
+        <div class="field photo-search">
+          <label for="photo-search">Buscar foto por nombre</label>
+          <input type="search" id="photo-search" placeholder="Ej: IMG_09128" autocomplete="off" />
+        </div>
         <button type="button" class="secondary" id="select-all-btn">Seleccionar todas</button>
       </div>
     </div>
@@ -160,13 +164,31 @@
 
     const galleryGrid = document.getElementById('gallery-grid');
     const emptyState = document.getElementById('empty-state');
+    let allPhotos = [];
     let currentPhotos = [];
     let currentLightboxIndex = -1;
 
-    async function loadPhotos() {
-      const { photos } = await apiRequest(`/api/galleries/${slug}/photos`, { extraHeaders: galleryHeaders() });
+    function filteredPhotos() {
+      const q = (document.getElementById('photo-search').value || '').trim().toLowerCase();
+      if (!q) return allPhotos;
+      return allPhotos.filter((photo) => String(photo.file_name || '').toLowerCase().includes(q));
+    }
+
+    function renderPhotoGrid(photos) {
       currentPhotos = photos;
-      emptyState.style.display = photos.length ? 'none' : 'block';
+      if (!allPhotos.length) {
+        emptyState.style.display = 'block';
+        emptyState.textContent = 'Esta galería todavía no tiene fotos.';
+        galleryGrid.innerHTML = '';
+        return;
+      }
+      if (!photos.length) {
+        emptyState.style.display = 'block';
+        emptyState.textContent = 'Ninguna foto coincide con esa búsqueda.';
+        galleryGrid.innerHTML = '';
+        return;
+      }
+      emptyState.style.display = 'none';
       galleryGrid.innerHTML = '';
       photos.forEach((photo, index) => {
         const card = document.createElement('div');
@@ -185,9 +207,19 @@
         galleryGrid.appendChild(card);
       });
       const toolbar = document.getElementById('gallery-toolbar');
-      toolbar.style.display = photos.length ? 'flex' : 'none';
+      toolbar.style.display = allPhotos.length ? 'flex' : 'none';
       updateSelectionBar();
     }
+
+    async function loadPhotos() {
+      const { photos } = await apiRequest(`/api/galleries/${slug}/photos`, { extraHeaders: galleryHeaders() });
+      allPhotos = photos;
+      renderPhotoGrid(filteredPhotos());
+    }
+
+    document.getElementById('photo-search').addEventListener('input', () => {
+      renderPhotoGrid(filteredPhotos());
+    });
 
     // --- Lightbox ---
     const lightboxEl = document.getElementById('lightbox');

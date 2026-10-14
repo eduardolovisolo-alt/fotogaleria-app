@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Punto Directo Media — Pedidos</title>
-<link rel="stylesheet" href="assets/css/style.css?v=20260920-logo" />
+<link rel="stylesheet" href="assets/css/style.css?v=20261014-fotos" />
 </head>
 <body>
   <header class="topbar">
@@ -58,6 +58,10 @@
     </details>
 
     <div class="order-stats" id="order-stats"></div>
+    <div class="field photo-search">
+      <label for="order-search">Buscar por cliente, galería o nombre de foto</label>
+      <input type="search" id="order-search" placeholder="Ej: IMG_09128 o Pascua" autocomplete="off" />
+    </div>
     <div class="filter-row" id="filter-row">
       <button type="button" class="filter-chip active" data-filter="all">Todos</button>
       <button type="button" class="filter-chip" data-filter="pending">Pendientes</button>
@@ -68,6 +72,12 @@
 
     <div id="orders-box" class="empty-state">Cargando...</div>
   </main>
+
+  <div id="order-photo-preview" class="order-photo-preview" hidden>
+    <img id="order-photo-preview-img" alt="" />
+    <p id="order-photo-preview-name"></p>
+    <button type="button" class="secondary" id="order-photo-preview-close">Cerrar</button>
+  </div>
 
   <script src="assets/js/whatsapp-studio.js?v=20261014-wa2"></script>
   <script src="assets/js/api.js?v=20261014-wa2"></script>
@@ -90,6 +100,7 @@
     const pageSlug = new URLSearchParams(window.location.search).get('slug') || '';
     let allOrders = [];
     let currentFilter = 'all';
+    let searchQuery = '';
 
     function escapeHtml(value) {
       return String(value || '')
@@ -128,18 +139,37 @@
 
     function renderOrders() {
       const box = document.getElementById('orders-box');
-      const scoped = pageSlug
+      const q = searchQuery.trim().toLowerCase();
+      const galleryScoped = pageSlug
         ? allOrders.filter((o) => o.gallery_slug === pageSlug)
         : allOrders;
+      const scoped = galleryScoped.filter((o) => {
+        if (!q) return true;
+        const hay = [
+          o.client_name,
+          o.client_email,
+          o.client_phone,
+          o.gallery_name,
+          `#${o.id}`,
+          o.access_pin,
+          ...(o.items || []).map((item) => item.fileName),
+        ].join(' ').toLowerCase();
+        return hay.includes(q);
+      });
       const orders = currentFilter === 'all'
         ? scoped
         : scoped.filter((o) => o.status === currentFilter);
 
-      if (!scoped.length) {
+      if (!galleryScoped.length) {
         box.className = 'empty-state';
         box.textContent = pageSlug
           ? 'Esta galería todavía no tiene pedidos.'
           : 'Todavía no recibiste pedidos. Cuando un cliente confirme, aparece acá.';
+        return;
+      }
+      if (!scoped.length) {
+        box.className = 'empty-state';
+        box.textContent = 'Ningún pedido coincide con esa búsqueda.';
         return;
       }
       if (!orders.length) {
@@ -155,7 +185,7 @@
           const replyUrl = typeof buildPhotographerReplyWhatsAppUrl === 'function'
             ? buildPhotographerReplyWhatsAppUrl(o, o.gallery_name, { downloadUrl })
             : '';
-          const photos = (o.items || []).map((item) => item.fileName).filter(Boolean);
+          const photos = (o.items || []).filter((item) => item.fileName || item.thumbnailUrl);
           const discount = Number(o.discount_percent) > 0 ? ` · ${Number(o.discount_percent)}% off` : '';
           const ready = o.status === 'paid' || o.status === 'shipped';
           return `
@@ -191,7 +221,12 @@
                   <a class="secondary" href="admin-gallery.html?slug=${encodeURIComponent(o.gallery_slug)}">Ver galería</a>
                   ${downloadUrl ? `<a class="secondary" href="${escapeHtml(downloadUrl)}" target="_blank" rel="noopener noreferrer">Ver pedido</a>` : ''}
                 </div>
-                ${photos.length ? `<ul class="order-photos">${photos.map((name) => `<li>${escapeHtml(name)}</li>`).join('')}</ul>` : ''}
+                ${photos.length ? `<div class="order-photo-grid">${photos.map((item) => `
+                  <figure class="order-photo-card" data-preview="${escapeHtml(item.previewUrl || item.thumbnailUrl || '')}" data-name="${escapeHtml(item.fileName || '')}">
+                    ${item.thumbnailUrl ? `<img src="${escapeHtml(item.thumbnailUrl)}" alt="${escapeHtml(item.fileName || '')}" loading="lazy" />` : ''}
+                    <figcaption>${escapeHtml(item.fileName || 'Foto')}</figcaption>
+                  </figure>
+                `).join('')}</div>` : ''}
               </div>
             </details>
           `;
@@ -205,6 +240,9 @@
         });
         box.querySelectorAll('[data-full]').forEach((input) => {
           input.addEventListener('change', () => updateFullGallery(input.dataset.full, input.checked));
+        });
+        box.querySelectorAll('.order-photo-card').forEach((card) => {
+          card.addEventListener('click', () => openPhotoPreview(card.dataset.preview, card.dataset.name));
         });
         box.querySelectorAll('[data-copy]').forEach((btn) => {
           btn.addEventListener('click', async () => {
@@ -317,6 +355,27 @@
       } catch (err) {
         showMessage(document.getElementById('settings-message'), err.message, 'error');
       }
+    });
+
+    function openPhotoPreview(src, name) {
+      if (!src) return;
+      document.getElementById('order-photo-preview-img').src = src;
+      document.getElementById('order-photo-preview-name').textContent = name || '';
+      document.getElementById('order-photo-preview').hidden = false;
+    }
+
+    document.getElementById('order-photo-preview-close').addEventListener('click', () => {
+      document.getElementById('order-photo-preview').hidden = true;
+      document.getElementById('order-photo-preview-img').src = '';
+    });
+    document.getElementById('order-photo-preview').addEventListener('click', (e) => {
+      if (e.target.id === 'order-photo-preview') {
+        document.getElementById('order-photo-preview-close').click();
+      }
+    });
+    document.getElementById('order-search').addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      renderOrders();
     });
 
     document.getElementById('filter-row').addEventListener('click', (e) => {
