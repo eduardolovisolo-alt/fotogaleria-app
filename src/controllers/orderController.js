@@ -7,7 +7,7 @@ const {
   sendOrderNotificationToPhotographer,
   sendOrderConfirmationToClient,
 } = require('../utils/mailer');
-const { withDownloadUrls, signedOriginalDownloadUrl } = require('./photoController');
+const { withDownloadUrls, signedOriginalDownloadUrl, withSignedUrls } = require('./photoController');
 const {
   pinsMatch,
   normalizePin,
@@ -34,13 +34,20 @@ function clientIp(req) {
 
 async function withItems(orders) {
   const items = await orderModel.findItemsByOrderIds(orders.map((order) => order.id));
+  const photoIds = [...new Set(items.map((item) => item.photo_id))];
+  const photos = await photoModel.findByIds(photoIds);
+  const signed = await Promise.all(photos.map((photo) => withSignedUrls(photo, false)));
+  const byPhotoId = new Map(signed.map((photo) => [Number(photo.id), photo]));
   const byOrder = {};
   items.forEach((item) => {
+    const photo = byPhotoId.get(Number(item.photo_id));
     byOrder[item.order_id] = byOrder[item.order_id] || [];
     byOrder[item.order_id].push({
       photoId: item.photo_id,
       fileName: item.file_name,
       price: item.price,
+      thumbnailUrl: photo?.thumbnailUrl || '',
+      previewUrl: photo?.previewUrl || photo?.thumbnailUrl || '',
     });
   });
   return orders.map((order) => ({ ...order, items: byOrder[order.id] || [] }));
