@@ -74,7 +74,7 @@
         </div>
       </div>
       <p style="color:var(--text-muted); margin-top:16px;">El pedido ya está en el panel del fotógrafo. Tocá el botón verde para mandar el pedido por WhatsApp y coordinar el pago.</p>
-      <a href="#" id="whatsapp-order-link" class="wa-btn" target="_blank" rel="noopener noreferrer">Enviar pedido por WhatsApp</a>
+      <a href="https://wa.me/5491124043503" id="whatsapp-order-link" class="wa-btn" target="_blank" rel="noopener noreferrer">Enviar pedido por WhatsApp</a>
       <a href="#" id="back-to-gallery" class="admin-link" style="margin-top:20px;">Volver a la galería</a>
     </div>
   </main>
@@ -163,34 +163,36 @@
       document.getElementById('total-amount').textContent = `$${quote.total.toLocaleString('es-AR')}`;
     }
 
-    async function openOrderWhatsApp(order, photoNames, name, email, phone, downloadUrl) {
-      const studio = window.STUDIO_WHATSAPP_NUMBER || '5491124043503';
-      if (typeof setStudioWhatsAppNumber === 'function') setStudioWhatsAppNumber(studio);
-      if (typeof loadWhatsAppNumber === 'function') await loadWhatsAppNumber();
-      if (typeof setStudioWhatsAppNumber === 'function') setStudioWhatsAppNumber(studio);
-      let url = typeof buildClientOrderWhatsAppUrl === 'function'
-        ? buildClientOrderWhatsAppUrl({
-          order,
-          galleryName: galleryName || order.gallery_name,
-          photoNames,
-          clientName: name,
-          clientEmail: email,
-          clientPhone: phone,
-          downloadUrl,
-        })
+    function openOrderWhatsApp(order, photoNames, name, email, phone, downloadUrl) {
+      const studio = '5491124043503';
+      const names = photoNames || [];
+      const photoLines = names.length
+        ? names.map((item) => `• ${typeof item === 'string' ? item : (item.file_name || item.fileName || '')}`).join('\n')
+        : `• ${order.photo_count} foto(s)`;
+      const total = Number(order.total_amount) > 0
+        ? `\nTotal: $${Number(order.total_amount).toLocaleString('es-AR')}`
         : '';
-      if (!url || url.indexOf('wa.me') === -1) {
-        const text = `Hola! Quiero confirmar este pedido:\n\nPedido #${order.id}\nGalería: ${galleryName || order.gallery_name || ''}`;
-        url = `https://wa.me/${studio}?text=${encodeURIComponent(text)}`;
-      }
-      url = url.replace(/https:\/\/wa\.me\/\d+/, `https://wa.me/${studio}`);
+      const pinPage = `${window.location.origin}/pedido.html`;
+      const text = [
+        'Hola! Quiero confirmar este pedido:',
+        '',
+        `Pedido #${order.id}`,
+        order.access_pin ? `PIN: ${order.access_pin}` : null,
+        `Galería: ${galleryName || order.gallery_name || ''}`,
+        `Fotos (${order.photo_count}):`,
+        photoLines,
+        total,
+        '',
+        `Nombre: ${name}`,
+        `Email: ${email}`,
+        phone ? `WhatsApp: ${phone}` : null,
+        downloadUrl ? `\nSeguí tu pedido y descargá cuando esté listo:\n${downloadUrl}` : null,
+        `\nSi no tenés el link, entrá a Mi pedido con el #${order.id} y el PIN:\n${pinPage}`,
+      ].filter(Boolean).join('\n');
+      const url = `https://wa.me/${studio}?text=${encodeURIComponent(text)}`;
       const link = document.getElementById('whatsapp-order-link');
-      if (typeof openWhatsApp === 'function') {
-        openWhatsApp(url, link);
-      } else {
-        if (link) link.href = url;
-        window.open(url, '_blank');
-      }
+      if (link) link.href = url;
+      window.open(url, '_blank');
     }
 
     document.getElementById('checkout-form').addEventListener('submit', async (e) => {
