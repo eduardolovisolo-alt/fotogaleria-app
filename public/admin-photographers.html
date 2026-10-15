@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Punto Directo Media — Fotógrafos</title>
+<link rel="stylesheet" href="assets/css/style.css?v=20261014-fotos2" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="admin.html" aria-label="Punto Directo">
+      <img src="assets/img/punto-directo.png" alt="Punto Directo" />
+    </a>
+    <nav>
+      <a href="admin.html">Galerías</a>
+      <a href="admin-photographers.html">Fotógrafos</a>
+      <a href="admin-watermark.html">Marca de agua</a>
+      <a href="admin-orders.html">Pedidos</a>
+      <a href="admin-messages.html">Mensajes</a>
+      <a href="dashboard.html">Mi cuenta</a>
+      <a href="#" id="logout-link">Cerrar sesión</a>
+    </nav>
+  </header>
+
+  <main class="admin-page">
+    <div class="page-header">
+      <h1>Fotógrafos</h1>
+    </div>
+    <p class="subtitle" style="margin-top:-12px;">Aprobá solicitudes y elegí qué galerías se ven en la home como destacadas.</p>
+    <div id="list-message" class="message"></div>
+    <div id="photographers-box" class="empty-state">Cargando...</div>
+  </main>
+
+  <script src="assets/js/whatsapp-studio.js?v=20261014-wa2"></script>
+  <script src="assets/js/api.js?v=20261014-fotos2"></script>
+  <script>
+    const session = getSession();
+    if (!session) window.location.href = 'login.html';
+
+    document.getElementById('logout-link').addEventListener('click', (e) => {
+      e.preventDefault();
+      clearSession();
+      window.location.href = 'index.html';
+    });
+
+    const STATUS = { pending: 'Pendiente', approved: 'Aprobado', rejected: 'Rechazado', studio: 'Estudio' };
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function showMessage(text, type) {
+      const el = document.getElementById('list-message');
+      el.textContent = text;
+      el.className = `message show ${type}`;
+    }
+
+    function render(photographers) {
+      const box = document.getElementById('photographers-box');
+      if (!photographers.length) {
+        box.className = 'empty-state';
+        box.textContent = 'Todavía no hay solicitudes de fotógrafos.';
+        return;
+      }
+      box.className = '';
+      box.innerHTML = photographers.map((p) => `
+        <details class="order-line">
+          <summary>
+            <div class="order-line-main">
+              <strong>${escapeHtml(p.name)}</strong>
+              <span>${escapeHtml(p.email)}${p.whatsapp ? ` · ${escapeHtml(p.whatsapp)}` : ''}</span>
+            </div>
+            <span class="badge ${p.status === 'approved' || p.kind === 'studio' ? 'paid' : p.status === 'rejected' ? 'cancelled' : 'pending'}">${STATUS[p.status] || p.status}</span>
+          </summary>
+          <div class="order-line-body">
+            <p class="meta">${p.slug ? `Perfil: fotografo.html?u=${escapeHtml(p.slug)}` : 'Sin perfil público todavía.'}</p>
+            <div class="gallery-row-actions" style="margin-top:12px;">
+              ${p.kind === 'studio' ? '' : `
+                ${p.status !== 'approved' ? `<button type="button" class="primary" data-approve="${p.id}">Aprobar</button>` : ''}
+                ${p.status !== 'rejected' ? `<button type="button" class="secondary" data-reject="${p.id}">Rechazar</button>` : ''}
+              `}
+              ${p.slug ? `<a class="secondary" href="fotografo.html?u=${encodeURIComponent(p.slug)}" target="_blank">Ver perfil</a>` : ''}
+            </div>
+            ${p.galleries.length ? `<p class="subtitle" style="margin-top:16px;">Galerías en la home</p>
+              ${p.galleries.map((g) => `
+                <label class="checkbox-field" style="margin-top:8px;">
+                  <input type="checkbox" data-feature="${g.id}" ${g.featured ? 'checked' : ''} />
+                  Destacar “${escapeHtml(g.name)}”
+                </label>
+              `).join('')}` : '<p class="meta">Todavía no creó galerías.</p>'}
+          </div>
+        </details>
+      `).join('');
+
+      box.querySelectorAll('[data-approve]').forEach((btn) => {
+        btn.addEventListener('click', () => setStatus(btn.dataset.approve, 'approved'));
+      });
+      box.querySelectorAll('[data-reject]').forEach((btn) => {
+        btn.addEventListener('click', () => setStatus(btn.dataset.reject, 'rejected'));
+      });
+      box.querySelectorAll('[data-feature]').forEach((input) => {
+        input.addEventListener('change', () => setFeatured(input.dataset.feature, input.checked));
+      });
+    }
+
+    async function setStatus(id, status) {
+      try {
+        await apiRequest(`/api/admin/photographers/${id}/status`, {
+          method: 'PUT',
+          token: session.token,
+          body: { status },
+        });
+        showMessage(status === 'approved' ? 'Fotógrafo aprobado. Ya puede usar su panel.' : 'Solicitud rechazada.', 'success');
+        load();
+      } catch (err) {
+        showMessage(err.message, 'error');
+      }
+    }
+
+    async function setFeatured(id, featured) {
+      try {
+        await apiRequest(`/api/admin/photographers/galleries/${id}/featured`, {
+          method: 'PUT',
+          token: session.token,
+          body: { featured },
+        });
+        showMessage(featured ? 'Galería destacada en la home.' : 'Galería sacada de la home.', 'success');
+      } catch (err) {
+        showMessage(err.message, 'error');
+        load();
+      }
+    }
+
+    async function load() {
+      const box = document.getElementById('photographers-box');
+      try {
+        const { user } = await apiRequest('/api/auth/me', { token: session.token });
+        if (user.role !== 'admin') {
+          window.location.href = panelPath(user);
+          return;
+        }
+        const { photographers } = await apiRequest('/api/admin/photographers', { token: session.token });
+        render(photographers);
+      } catch (err) {
+        box.className = 'empty-state';
+        box.textContent = err.message || 'No se pudieron cargar los fotógrafos.';
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>

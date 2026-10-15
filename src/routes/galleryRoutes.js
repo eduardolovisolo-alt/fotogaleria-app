@@ -4,7 +4,8 @@ const photoController = require('../controllers/photoController');
 const selectionController = require('../controllers/selectionController');
 const orderController = require('../controllers/orderController');
 const watermarkController = require('../controllers/watermarkController');
-const { protect, requireRole } = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
+const { requireStaff } = require('../middleware/staffMiddleware');
 const { loadGallery, requireGalleryAccess } = require('../middleware/galleryAccessMiddleware');
 const upload = require('../middleware/uploadMiddleware');
 const { verifyToken } = require('../utils/jwt');
@@ -13,20 +14,20 @@ const { sameId } = require('../utils/ids');
 const router = express.Router();
 
 // --- Rutas de administración (requieren login de admin) ---
-router.post('/', protect, requireRole('admin'), galleryController.createGallery);
-router.get('/', protect, requireRole('admin'), galleryController.listMyGalleries);
+router.post('/', protect, requireStaff, galleryController.createGallery);
+router.get('/', protect, requireStaff, galleryController.listMyGalleries);
 router.get('/catalog', galleryController.listCatalog);
-router.put('/:id', protect, requireRole('admin'), galleryController.updateGallery);
-router.delete('/:id', protect, requireRole('admin'), galleryController.deleteGallery);
-router.get('/:id/selections', protect, requireRole('admin'), galleryController.getSelections);
-router.get('/:id/orders', protect, requireRole('admin'), orderController.listGalleryOrders);
-router.get('/:slug/admin-orders', protect, requireRole('admin'), loadGallery, requireGalleryOwner, orderController.listGalleryOrders);
+router.put('/:id', protect, requireStaff, galleryController.updateGallery);
+router.delete('/:id', protect, requireStaff, galleryController.deleteGallery);
+router.get('/:id/selections', protect, requireStaff, galleryController.getSelections);
+router.get('/:id/orders', protect, requireStaff, orderController.listGalleryOrders);
+router.get('/:slug/admin-orders', protect, requireStaff, loadGallery, requireGalleryOwner, orderController.listGalleryOrders);
 
 // Subida/borrado de fotos: requiere admin logueado, dueño de la galería (verificado en el controller vía slug)
 router.post(
   '/:slug/photos',
   protect,
-  requireRole('admin'),
+  requireStaff,
   loadGallery,
   requireGalleryOwner,
   upload.single('photo'),
@@ -35,7 +36,7 @@ router.post(
 router.post(
   '/:slug/reprocess-watermark',
   protect,
-  requireRole('admin'),
+  requireStaff,
   loadGallery,
   requireGalleryOwner,
   watermarkController.reprocessGallery
@@ -43,7 +44,7 @@ router.post(
 router.delete(
   '/:slug/photos/:photoId',
   protect,
-  requireRole('admin'),
+  requireStaff,
   loadGallery,
   requireGalleryOwner,
   photoController.deletePhoto

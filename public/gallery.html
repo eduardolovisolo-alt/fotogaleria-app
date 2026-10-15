@@ -80,7 +80,7 @@
   </div>
 
   <script src="assets/js/whatsapp-studio.js?v=20261014-wa2"></script>
-  <script src="assets/js/api.js?v=20261014-wa2"></script>
+  <script src="assets/js/api.js?v=20261014-fotos2"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const slug = params.get('slug');
@@ -120,10 +120,14 @@
       document.getElementById('gallery-view').style.display = 'none';
     }
 
-    function setAuthor(author) {
+    function setAuthor(author, photographerSlug) {
       const el = document.getElementById('gallery-author');
       if (author) {
-        el.textContent = `Fotos de ${author}`;
+        if (photographerSlug) {
+          el.innerHTML = `Fotos de <a href="fotografo.html?u=${encodeURIComponent(photographerSlug)}">${author.replace(/</g, '&lt;')}</a>`;
+        } else {
+          el.textContent = `Fotos de ${author}`;
+        }
         el.style.display = 'block';
       } else {
         el.style.display = 'none';
@@ -134,7 +138,10 @@
       document.getElementById('lock-view').style.display = 'none';
       document.getElementById('gallery-view').style.display = 'block';
       document.getElementById('gallery-name').textContent = gallery.name;
-      setAuthor(gallery.author);
+      setAuthor(gallery.author || (gallery.photographer && gallery.photographer.name), gallery.photographer && gallery.photographer.slug);
+      if (gallery.photographer && gallery.photographer.whatsappNumber) {
+        setStudioWhatsAppNumber(gallery.photographer.whatsappNumber);
+      }
       await loadSelections();
       await loadPhotos();
     }

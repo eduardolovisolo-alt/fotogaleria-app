@@ -26,9 +26,17 @@
       </div>
     </div>
 
+    <div class="create-panel" id="pending-panel" style="display:none; margin-top:24px;">
+      <h2 style="margin-top:0;">Solicitud en revisión</h2>
+      <p class="subtitle" style="margin-top:0;">Ya recibimos tu pedido para ser fotógrafo. Cuando lo aprobemos, vas a poder crear galerías y recibir pedidos en tu WhatsApp.</p>
+    </div>
+    <div class="create-panel" id="rejected-panel" style="display:none; margin-top:24px;">
+      <h2 style="margin-top:0;">Solicitud no aprobada</h2>
+      <p class="subtitle" style="margin-top:0;">Esta cuenta no tiene acceso al panel. Si creés que es un error, escribinos.</p>
+    </div>
     <div class="create-panel" id="whatsapp-panel" style="display:none; margin-top:24px;">
-      <h2 style="margin-top:0;">WhatsApp del estudio</h2>
-      <p class="subtitle" style="margin-top:0;">Este número recibe los pedidos y el botón verde de la web. El del checkout es el del cliente, no este.</p>
+      <h2 style="margin-top:0;">Tu WhatsApp</h2>
+      <p class="subtitle" style="margin-top:0;">Los pedidos de tus galerías se mandan a este número.</p>
       <div id="whatsapp-message" class="message"></div>
       <form id="whatsapp-form">
         <div class="field">
@@ -46,7 +54,7 @@
   </main>
 
   <script src="assets/js/whatsapp-studio.js?v=20261014-wa2"></script>
-  <script src="assets/js/api.js?v=20261014-wa2"></script>
+  <script src="assets/js/api.js?v=20261014-fotos2"></script>
   <script>
     const session = getSession();
     if (!session) window.location.href = 'login.html';
@@ -67,13 +75,22 @@
         const { user } = await apiRequest('/api/auth/me', { token: session.token });
         document.getElementById('user-name').textContent = user.name;
         document.getElementById('user-email').textContent = user.email;
-        document.getElementById('user-role').textContent = user.role;
+        const roleLabel = user.role === 'photographer'
+          ? (user.photographer_status === 'approved' ? 'Fotógrafo' : user.photographer_status === 'pending' ? 'Fotógrafo (pendiente)' : 'Fotógrafo')
+          : user.role;
+        document.getElementById('user-role').textContent = roleLabel;
         document.getElementById('avatar').textContent = user.name.charAt(0).toUpperCase();
-        if (user.role === 'admin') {
+        if (canManagePanel(user)) {
           document.getElementById('admin-link').style.display = 'block';
           document.getElementById('orders-link').style.display = 'block';
           document.getElementById('whatsapp-panel').style.display = 'block';
           fillWhatsAppField(user);
+        } else if (user.role === 'photographer' && user.photographer_status === 'pending') {
+          document.getElementById('pending-panel').style.display = 'block';
+          document.getElementById('whatsapp-panel').style.display = 'block';
+          fillWhatsAppField(user);
+        } else if (user.role === 'photographer' && user.photographer_status === 'rejected') {
+          document.getElementById('rejected-panel').style.display = 'block';
         }
       } catch (err) {
         clearSession();

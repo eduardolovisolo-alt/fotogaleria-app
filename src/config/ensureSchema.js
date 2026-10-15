@@ -4,10 +4,12 @@ const { generateDownloadToken, generateAccessPin } = require('../utils/orderAcce
 async function addColumn(sql) {
   try {
     await pool.query(sql);
+    return true;
   } catch (err) {
     if (err.code !== 'ER_DUP_FIELDNAME' && err.errno !== 1060) {
       throw err;
     }
+    return false;
   }
 }
 
@@ -43,6 +45,46 @@ async function ensureSchema() {
   await addColumn('ALTER TABLE galleries ADD COLUMN discount_tiers TEXT NULL');
   await addColumn('ALTER TABLE users ADD COLUMN order_auto_delete_days INT NULL');
   await addColumn('ALTER TABLE users ADD COLUMN whatsapp_number VARCHAR(20) NULL');
+  await addColumn("ALTER TABLE users ADD COLUMN photographer_status ENUM('pending', 'approved', 'rejected') NULL");
+  await addColumn('ALTER TABLE users ADD COLUMN public_slug VARCHAR(160) NULL');
+  const addedFeatured = await addColumn('ALTER TABLE galleries ADD COLUMN featured TINYINT(1) NOT NULL DEFAULT 0');
+  try {
+    await pool.query(
+      "ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'photographer', 'client') NOT NULL DEFAULT 'client'"
+    );
+  } catch (err) {
+    console.error('ensure user role enum:', err.message);
+  }
+  try {
+    await addIndex('CREATE UNIQUE INDEX uniq_users_public_slug ON users (public_slug)');
+  } catch (err) {
+    console.error('ensure photographer slug:', err.message);
+  }
+  if (addedFeatured) {
+    try {
+      await pool.query(
+        `UPDATE galleries g
+         JOIN users u ON u.id = g.admin_id
+         SET g.featured = 1
+         WHERE u.role = 'admin'`
+      );
+    } catch (err) {
+      console.error('ensure featured galleries:', err.message);
+    }
+  }
+  try {
+    const userModel = require('../models/userModel');
+    const { uniquePhotographerSlug } = require('../utils/slug');
+    const admins = await userModel.findAdmins();
+    for (const admin of admins) {
+      if (!admin.public_slug) {
+        const slug = await uniquePhotographerSlug(admin.name || 'punto-directo');
+        await userModel.setPublicSlug(admin.id, slug);
+      }
+    }
+  } catch (err) {
+    console.error('ensure admin slugs:', err.message);
+  }
   await addColumn('ALTER TABLE orders ADD COLUMN discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0');
   await addColumn('ALTER TABLE orders ADD COLUMN download_token VARCHAR(64) NULL');
   await addColumn('ALTER TABLE orders ADD COLUMN access_pin VARCHAR(6) NULL');

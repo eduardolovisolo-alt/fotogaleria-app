@@ -13,8 +13,10 @@
     </a>
     <nav>
       <a href="admin.html">Galerías</a>
+      <a href="admin-photographers.html">Fotógrafos</a>
       <a href="admin-watermark.html">Marca de agua</a>
       <a href="admin-orders.html">Pedidos</a>
+      <a href="dashboard.html">Mi cuenta</a>
       <a href="#" id="logout-link">Cerrar sesión</a>
     </nav>
   </header>
@@ -28,10 +30,22 @@
   </main>
 
   <script src="assets/js/whatsapp-studio.js?v=20261014-wa2"></script>
-  <script src="assets/js/api.js?v=20261014-wa2"></script>
+  <script src="assets/js/api.js?v=20261014-fotos2"></script>
   <script>
     const session = getSession();
     if (!session) window.location.href = 'login.html';
+
+    (async () => {
+      try {
+        const { user } = await apiRequest('/api/auth/me', { token: session.token });
+        if (user.role !== 'admin') {
+          window.location.href = panelPath(user);
+        }
+      } catch {
+        clearSession();
+        window.location.href = 'login.html';
+      }
+    })();
 
     document.getElementById('logout-link').addEventListener('click', (e) => {
       e.preventDefault();

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Punto Directo Media — Fotógrafo</title>
+<link rel="stylesheet" href="assets/css/style.css?v=20261014-fotos2" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html" aria-label="Punto Directo">
+      <img src="assets/img/punto-directo.png" alt="Punto Directo" />
+    </a>
+    <nav>
+      <a href="index.html">Inicio</a>
+      <a href="pedido.html">Mi pedido</a>
+      <a href="contact.html">Contacto</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="catalog-page">
+      <div class="catalog-intro">
+        <p class="hero-kicker">Fotógrafo</p>
+        <h1 id="photo-name">Cargando...</h1>
+        <p>Elegí una sesión. Si es privada, usá el usuario y la contraseña que te compartió.</p>
+      </div>
+      <div id="catalog"></div>
+      <p class="empty-state" id="empty-state" style="display:none;">Este fotógrafo todavía no tiene galerías.</p>
+    </section>
+  </main>
+
+  <div id="lock-modal" class="lock-modal" style="display:none;">
+    <div class="card">
+      <h1 id="lock-title">Galería privada</h1>
+      <p class="subtitle">Ingresá el usuario y la contraseña que te compartió el fotógrafo</p>
+      <div id="lock-message" class="message"></div>
+      <form id="unlock-form">
+        <div class="field">
+          <label for="gallery-username">Usuario</label>
+          <input type="text" id="gallery-username" required autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="gallery-password">Contraseña</label>
+          <input type="password" id="gallery-password" required autocomplete="current-password" />
+        </div>
+        <button type="submit" class="primary">Entrar</button>
+        <button type="button" class="secondary" id="lock-cancel" style="width:100%; margin-top:10px;">Volver</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="assets/js/whatsapp-studio.js?v=20261014-wa2"></script>
+  <script src="assets/js/api.js?v=20261014-fotos2"></script>
+  <script>
+    const slug = new URLSearchParams(window.location.search).get('u');
+    if (!slug) window.location.href = 'index.html';
+
+    const catalog = document.getElementById('catalog');
+    const emptyState = document.getElementById('empty-state');
+    const modal = document.getElementById('lock-modal');
+    let pendingSlug = null;
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function openGallery(gallerySlug) {
+      window.location.href = `gallery.html?slug=${encodeURIComponent(gallerySlug)}`;
+    }
+
+    function galleryCard(g) {
+      return `
+        <button type="button" class="catalog-card" data-slug="${escapeHtml(g.slug)}" data-public="${g.isPublic ? '1' : '0'}" data-name="${escapeHtml(g.name)}">
+          ${g.coverUrl
+            ? `<img class="protected-photo" src="${escapeHtml(g.coverUrl)}" alt="${escapeHtml(g.name)}" loading="lazy" draggable="false" />`
+            : `<div class="catalog-card-empty">Próximamente</div>`}
+          <div class="img-shield"></div>
+          ${g.isPublic ? '' : '<span class="catalog-lock">Privada</span>'}
+          <div class="catalog-overlay">
+            <h2>${escapeHtml(g.name)}</h2>
+            ${g.photoCount ? `<span class="catalog-count">${g.photoCount} foto${g.photoCount === 1 ? '' : 's'}</span>` : ''}
+          </div>
+        </button>
+      `;
+    }
+
+    function render(galleries) {
+      emptyState.style.display = galleries.length ? 'none' : 'block';
+      catalog.innerHTML = `<div class="catalog-grid">${galleries.map(galleryCard).join('')}</div>`;
+      catalog.querySelectorAll('.catalog-card').forEach((card) => {
+        card.addEventListener('click', () => {
+          if (card.dataset.public === '1') openGallery(card.dataset.slug);
+          else {
+            pendingSlug = card.dataset.slug;
+            document.getElementById('lock-title').textContent = card.dataset.name;
+            document.getElementById('lock-message').className = 'message';
+            document.getElementById('unlock-form').reset();
+            modal.style.display = 'flex';
+          }
+        });
+      });
+    }
+
+    document.getElementById('lock-cancel').addEventListener('click', () => { modal.style.display = 'none'; });
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+
+    document.getElementById('unlock-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!pendingSlug) return;
+      const messageEl = document.getElementById('lock-message');
+      try {
+        const { token } = await apiRequest(`/api/galleries/${pendingSlug}/unlock`, {
+          method: 'POST',
+          body: {
+            username: document.getElementById('gallery-username').value.trim(),
+            password: document.getElementById('gallery-password').value,
+          },
+        });
+        sessionStorage.setItem(`gallery_token_${pendingSlug}`, token);
+        openGallery(pendingSlug);
+      } catch (err) {
+        messageEl.textContent = err.message;
+        messageEl.className = 'message show error';
+      }
+    });
+
+    (async () => {
+      try {
+        const { photographer, galleries } = await apiRequest(`/api/photographers/${encodeURIComponent(slug)}`);
+        document.getElementById('photo-name').textContent = photographer.name;
+        document.title = `${photographer.name} — Punto Directo`;
+        if (photographer.whatsappNumber) setStudioWhatsAppNumber(photographer.whatsappNumber);
+        render(galleries || []);
+      } catch (err) {
+        document.getElementById('photo-name').textContent = 'Fotógrafo';
+        emptyState.style.display = 'block';
+        emptyState.textContent = err.message || 'No encontramos a ese fotógrafo.';
+      }
+    })();
+  </script>
+</body>
+</html>

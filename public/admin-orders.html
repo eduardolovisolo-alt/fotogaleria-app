@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Punto Directo Media — Pedidos</title>
-<link rel="stylesheet" href="assets/css/style.css?v=20261014-fotos" />
+<link rel="stylesheet" href="assets/css/style.css?v=20261014-fotos2" />
 </head>
 <body>
   <header class="topbar">
@@ -13,8 +13,9 @@
     </a>
     <nav>
       <a href="admin.html">Galerías</a>
+      <a href="admin-photographers.html" id="photographers-nav" style="display:none;">Fotógrafos</a>
       <a href="admin-watermark.html">Marca de agua</a>
-      <a href="admin-messages.html">Mensajes</a>
+      <a href="admin-messages.html" id="messages-nav">Mensajes</a>
       <a href="dashboard.html">Mi cuenta</a>
       <a href="#" id="logout-link">Cerrar sesión</a>
     </nav>
@@ -27,8 +28,8 @@
     <p class="subtitle" style="margin-top:-12px; margin-bottom:18px;">Lista central de todos los pedidos. En cada galería solo se ve la cantidad.</p>
 
     <details class="settings-fold" open>
-      <summary>WhatsApp del estudio</summary>
-      <p class="subtitle" style="margin-top:0;">Acá se cambia el número que recibe los pedidos y el botón verde de la web.</p>
+      <summary>Tu WhatsApp</summary>
+      <p class="subtitle" style="margin-top:0;">Los pedidos de tus galerías se mandan a este número.</p>
       <form id="whatsapp-form">
         <div class="field">
           <label for="whatsapp-number">Número de WhatsApp</label>
@@ -80,7 +81,7 @@
   </div>
 
   <script src="assets/js/whatsapp-studio.js?v=20261014-wa2"></script>
-  <script src="assets/js/api.js?v=20261014-wa2"></script>
+  <script src="assets/js/api.js?v=20261014-fotos2"></script>
   <script>
     const session = getSession();
     if (!session) window.location.href = 'login.html';
@@ -265,10 +266,11 @@
       const box = document.getElementById('orders-box');
       try {
         const { user } = await apiRequest('/api/auth/me', { token: session.token });
-        if (user.role !== 'admin') {
+        if (!canManagePanel(user)) {
           window.location.href = 'dashboard.html';
           return;
         }
+        applyStaffNav(user);
 
         const { orders, settings } = await apiRequest('/api/orders', { token: session.token });
         allOrders = orders;

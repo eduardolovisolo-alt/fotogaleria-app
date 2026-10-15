@@ -63,6 +63,31 @@ async function findAll() {
   return rows;
 }
 
+async function findFeatured() {
+  try {
+    const [rows] = await pool.query(
+      `SELECT g.*, u.name AS photographer_name, u.public_slug AS photographer_slug, u.role AS owner_role
+       FROM galleries g
+       JOIN users u ON u.id = g.admin_id
+       WHERE g.featured = 1
+         AND (u.role = 'admin' OR (u.role = 'photographer' AND u.photographer_status = 'approved'))
+       ORDER BY g.created_at DESC`
+    );
+    return rows;
+  } catch (err) {
+    if (err.code !== 'ER_BAD_FIELD_ERROR') throw err;
+    return findAll();
+  }
+}
+
+async function findPublicByOwner(adminId) {
+  const [rows] = await pool.query(
+    'SELECT * FROM galleries WHERE admin_id = ? ORDER BY created_at DESC',
+    [adminId]
+  );
+  return rows;
+}
+
 async function slugExists(slug) {
   const [rows] = await pool.query('SELECT id FROM galleries WHERE slug = ? LIMIT 1', [slug]);
   return rows.length > 0;
@@ -78,6 +103,7 @@ async function update(id, {
   pricePerPhoto,
   author,
   applyWatermark,
+  featured,
   discountTiers,
 }) {
   const fields = [];
@@ -123,6 +149,10 @@ async function update(id, {
     fields.push('discount_tiers = ?');
     values.push(serializeTiers(discountTiers));
   }
+  if (featured !== undefined) {
+    fields.push('featured = ?');
+    values.push(featured ? 1 : 0);
+  }
 
   if (!fields.length) return findById(id);
 
@@ -141,6 +171,8 @@ module.exports = {
   findBySlug,
   findByAdmin,
   findAll,
+  findFeatured,
+  findPublicByOwner,
   slugExists,
   update,
   deleteById,

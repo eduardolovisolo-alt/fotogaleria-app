@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "node src/utils/orderAccess.test.js && node src/utils/whatsapp.test.js"
+    "test": "node src/utils/orderAccess.test.js && node src/utils/whatsapp.test.js && node src/middleware/staffMiddleware.test.js"
   },
   "keywords": [],
   "author": "",

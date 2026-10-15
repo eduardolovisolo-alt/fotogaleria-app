@@ -1,12 +1,13 @@
 const express = require('express');
-const { protect, requireRole } = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
+const { requireStaff } = require('../middleware/staffMiddleware');
 const upload = require('../middleware/uploadMiddleware');
 const watermarkController = require('../controllers/watermarkController');
 
 const router = express.Router();
 
-router.get('/', protect, requireRole('admin'), watermarkController.getSettings);
-router.put('/', protect, requireRole('admin'), upload.single('logo'), watermarkController.saveSettings);
-router.get('/preview', protect, requireRole('admin'), watermarkController.preview);
+router.get('/', protect, requireStaff, watermarkController.getSettings);
+router.put('/', protect, requireStaff, upload.single('logo'), watermarkController.saveSettings);
+router.get('/preview', protect, requireStaff, watermarkController.preview);
 
 module.exports = router;

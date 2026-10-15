@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Punto Directo Media — Panel de galerías</title>
-<link rel="stylesheet" href="assets/css/style.css?v=20260920-logo" />
+<link rel="stylesheet" href="assets/css/style.css?v=20261014-fotos2" />
 </head>
 <body>
   <header class="topbar">
@@ -13,9 +13,10 @@
     </a>
     <nav>
       <a href="admin.html">Galerías</a>
+      <a href="admin-photographers.html" id="photographers-nav" style="display:none;">Fotógrafos</a>
       <a href="admin-watermark.html">Marca de agua</a>
       <a href="admin-orders.html">Pedidos</a>
-      <a href="admin-messages.html">Mensajes</a>
+      <a href="admin-messages.html" id="messages-nav">Mensajes</a>
       <a href="dashboard.html">Mi cuenta</a>
       <a href="#" id="logout-link">Cerrar sesión</a>
     </nav>
@@ -39,8 +40,8 @@
           <input type="text" id="gallery-name" required placeholder="Ej: Boda Sofía y Juan" />
         </div>
         <div class="field" style="margin-top:14px;">
-          <label for="gallery-author">Autor de las fotos</label>
-          <input type="text" id="gallery-author" maxlength="150" placeholder="Ej: Patricio Lovisolo" />
+          <label for="gallery-author">Autor de las fotos (opcional)</label>
+          <input type="text" id="gallery-author" maxlength="150" placeholder="Si lo dejás vacío, usamos tu nombre" />
         </div>
         <div class="inline-fields" style="margin-top:14px;">
           <label class="checkbox-field">
@@ -76,7 +77,7 @@
   </main>
 
   <script src="assets/js/whatsapp-studio.js?v=20261014-wa2"></script>
-  <script src="assets/js/api.js?v=20261014-wa2"></script>
+  <script src="assets/js/api.js?v=20261014-fotos2"></script>
   <script>
     const session = getSession();
     if (!session) window.location.href = 'login.html';
@@ -90,12 +91,17 @@
     async function guardAdmin() {
       try {
         const { user } = await apiRequest('/api/auth/me', { token: session.token });
-        if (user.role !== 'admin') {
+        if (!canManagePanel(user)) {
           window.location.href = 'dashboard.html';
+          return false;
         }
+        applyStaffNav(user);
+        window.__isAdminUser = user.role === 'admin';
+        return true;
       } catch {
         clearSession();
         window.location.href = 'login.html';
+        return false;
       }
     }
 
@@ -127,6 +133,7 @@
             <h3>${g.name}</h3>
             <div class="meta">
               <span class="badge ${g.isPublic ? 'public' : 'private'}">${g.isPublic ? 'Pública' : 'Privada'}</span>
+              ${g.featured ? '<span class="badge public">Destacada</span>' : ''}
               ${g.author ? `<span>${g.author}</span>` : ''}
               <span>${g.photoCount} foto${g.photoCount === 1 ? '' : 's'}</span>
               <span>${g.orderCount || 0} pedido${g.orderCount === 1 ? '' : 's'}</span>
@@ -134,6 +141,7 @@
             </div>
           </div>
           <div class="gallery-row-actions">
+            ${window.__isAdminUser ? `<label class="checkbox-field"><input type="checkbox" data-feature="${g.id}" ${g.featured ? 'checked' : ''} /> Home</label>` : ''}
             <a class="secondary" href="admin-orders.html?slug=${encodeURIComponent(g.slug)}">Pedidos</a>
             <a class="secondary" href="admin-gallery.html?slug=${encodeURIComponent(g.slug)}">Administrar</a>
             <button class="secondary" data-id="${g.id}" data-action="delete">Eliminar</button>
@@ -144,6 +152,21 @@
 
       listEl.querySelectorAll('[data-action="delete"]').forEach((btn) => {
         btn.addEventListener('click', () => deleteGallery(btn.dataset.id));
+      });
+      listEl.querySelectorAll('[data-feature]').forEach((input) => {
+        input.addEventListener('change', async () => {
+          try {
+            await apiRequest(`/api/admin/photographers/galleries/${input.dataset.feature}/featured`, {
+              method: 'PUT',
+              token: session.token,
+              body: { featured: input.checked },
+            });
+            loadGalleries();
+          } catch (err) {
+            showMessage(listMessage, err.message, 'error');
+            loadGalleries();
+          }
+        });
       });
     }
 
@@ -209,8 +232,9 @@
       document.getElementById('gallery-name').focus();
     });
 
-    guardAdmin();
-    loadGalleries();
+    (async () => {
+      if (await guardAdmin()) await loadGalleries();
+    })();
   </script>
 </body>
 </html>
